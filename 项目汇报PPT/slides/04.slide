@@ -1,0 +1,28 @@
+<Slide style={{ background: '#FFFFFF' }}>
+  <Box style={{ flexDirection: 'row', flex: 1 }}>
+    <Box style={{ width: 380, background: '#F0F5FC', padding: '64px 42px', gap: 24, borderRight: '1px solid #D6DCE5' }}>
+      <Text style={{ fontSize: 40, fontWeight: 'bold', color: '#0E3F8C', lineHeight: 1.3 }}>项目背景与问题</Text>
+      <Box style={{ width: 56, height: 4, background: '#FFC107' }} />
+      <Text style={{ fontSize: 20, color: '#4A5568', lineHeight: 1.8 }}>
+        卫星遥感是森林砍伐监测、水体污染追踪、作物长势评估的核心手段，大量一线工作者依赖 Google Earth Engine（GEE）开展分析，却长期被编程门槛卡住。
+      </Text>
+    </Box>
+    <Box style={{ flex: 1, padding: '52px 56px', gap: 24, justifyContent: 'center' }}>
+      {[
+        { t: '编程门槛高', d: 'GEE 需要编程基础，遥感分析代码编写复杂、调试耗时，频繁试错严重拉低效率。' },
+        { t: '学习曲线陡峭', d: '生态学家、基层环保工作者等非技术用户难以直接上手，被迫依赖专业编程人员。' },
+        { t: '依赖导致延误', d: '常因无法自主完成分析而延误工作，业务周期被外包与沟通反复拉长。' },
+      ].map((p, i) => (
+        <Box key={i} style={{ background: '#F7F9FC', border: '1px solid #D6DCE5', borderRadius: 10, padding: '22px 26px', flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
+          <Box style={{ width: 38, height: 38, background: '#1E4FA8', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' }}>{i + 1}</Text>
+          </Box>
+          <Box style={{ flex: 1, gap: 6 }}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1A2230' }}>{p.t}</Text>
+            <Text style={{ fontSize: 18, color: '#4A5568', lineHeight: 1.6 }}>{p.d}</Text>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+</Slide>

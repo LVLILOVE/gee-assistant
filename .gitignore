@@ -1,0 +1,84 @@
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+.env
+.DS_Store
+
+# GEE 凭据：私钥与加密凭据库一律不进版本库（任务书安全要求）
+# ⚠ 路径必须写全：库与凭据的真实位置是 backend/data/，不是仓库根的 data/。
+#    原规则写成 `data/credentials/`，而 backend/data/credentials/ 并不匹配
+#    （gitignore 的 `/` 锚定模式相对 .gitignore 所在目录，且不自动匹配中间层级）
+#    —— 2026-09-20 开源前审计实测：`git check-ignore backend/data/credentials/.data_key`
+#    退出码 1（= 没被忽略），即密钥原本**会被提交**。以下用 `**/` 兜住任意层级。
+**/data/credentials/
+# 业务数据加密密钥（tasks/regions 敏感字段的 Fernet key）。
+# 丢了它 = 库里所有密文永久无法解密，所以绝不进版本库，需单独备份。
+.data_key
+*.data_key
+*.key
+*service_account*.json
+*-key.json
+.private-key.json
+service-account*.json
+
+# sqlite 库：含用户密码哈希与会话 token，不能进版本库
+# ⚠ 同样必须带 `**/` 前缀，理由同上（真实路径是 backend/data/app.db）
+**/data/*.db
+**/data/*.db-journal
+**/data/*.db-wal
+
+# 测试脚本产生的会话 cookie
+.auth_test_cookies.txt
+
+# 隔离测试的工作目录（cookie jar + 临时库 + 服务日志）
+backend/.iso_http_tmp*/
+
+# 配额测试的工作目录（同上）
+backend/.quota_tmp*/
+
+# 浏览器验证实例的工作目录（生产库副本 + 服务日志）
+backend/.browser_verify/
+
+# 鉴权测试的工作目录（同上）
+backend/.auth_tmp*/
+
+# 改库前的手工备份（含用户密码哈希，绝不进版本库）
+backend/.db_backup/
+
+# vite 重载配置时泄漏的时间戳临时文件（进程被强杀时会残留）
+frontend/vite.config.js.timestamp-*.mjs
+
+# 重新构建前挪开的旧产物目录（带日期后缀的也要覆盖，否则 2MB 构建产物会被误提交）
+frontend/dist_old/
+frontend/dist_old_*/
+
+# 浏览器渲染验证实例的工作目录（临时库 + 服务日志，均可随时删）
+backend/.browser_verify/
+backend/.ui_tmp*/
+
+# ---- 开源前补充（2026-09-20）----
+# 浏览器验证用 Edge 无头 profile：960 个文件 / 47MB，全是浏览器缓存与 SQLite，
+# 与项目无关，但会被 git 全量收进来。
+.cache/
+
+# 测试脚手架残留的工作目录（cookie jar + 临时库 + 服务日志）
+# 已有 .auth_tmp*/.iso_http_tmp*/.quota_tmp*/.ui_tmp* 条目，
+# 这里兜住一切「点号开头的临时目录」，避免新增测试再漏一次。
+backend/.[a-z]*_tmp*/
+backend/.tmp*/
+
+# 加密密钥的备份文件。⚠ 与 .data_key 同等敏感：
+# 拿到它就能解密库里全部业务数据（区域名/代码/结果/反馈）。
+# 原规则只覆盖 data/credentials/ 与 *.key，这个 .txt 后缀的备份漏了。
+backend/data/backup/
+
+# 服务运行日志（按需保留，但不必进版本库）
+backend/logs/
+*.log
+
+# 构建中转目录与旧产物留档
+.build_tmp_*/
+frontend/dist.bak_*/
+*.bak_*

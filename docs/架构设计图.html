@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>卫星遥感影像智能分析助手 · 系统架构设计图</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e2229; --line:#2c313a;
+    --fg:#e6e8ec; --fg2:#a8aeb8; --fg3:#6f7681;
+    --c1:#4a9eff; --c2:#3ddc97; --c3:#ffb454; --c4:#c792ea; --c5:#ff6b7a;
+    --r:8px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 64px;
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    font-size:14px; line-height:1.65;
+  }
+  .wrap{max-width:1080px; margin:0 auto}
+  h1{font-size:22px; font-weight:500; margin:0 0 6px}
+  .sub{color:var(--fg3); font-size:13px; margin-bottom:8px}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:8px 20px;
+    padding:12px 16px; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--r); margin:18px 0 30px; font-size:13px;
+  }
+  .meta b{color:var(--fg2); font-weight:400}
+  h2{
+    font-size:16px; font-weight:500; margin:40px 0 14px;
+    padding-left:10px; border-left:3px solid var(--c1);
+  }
+  h3{font-size:14px; font-weight:500; margin:24px 0 10px; color:var(--fg2)}
+  p{color:var(--fg2); margin:10px 0}
+  .layer{
+    border:1px solid var(--line); border-radius:var(--r);
+    background:var(--panel); margin-bottom:14px; overflow:hidden;
+  }
+  .layer-h{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 16px; background:var(--panel2);
+    border-bottom:1px solid var(--line); font-size:13px;
+  }
+  .layer-h .tag{
+    font-size:11px; padding:2px 8px; border-radius:10px;
+    background:rgba(74,158,255,.15); color:var(--c1); border:1px solid rgba(74,158,255,.3);
+  }
+  .layer-h .tag.g{background:rgba(61,220,151,.13); color:var(--c2); border-color:rgba(61,220,151,.3)}
+  .layer-h .tag.y{background:rgba(255,180,84,.13); color:var(--c3); border-color:rgba(255,180,84,.3)}
+  .layer-h .tag.p{background:rgba(199,146,234,.13); color:var(--c4); border-color:rgba(199,146,234,.3)}
+  .layer-h .tag.r{background:rgba(255,107,122,.13); color:var(--c5); border-color:rgba(255,107,122,.3)}
+  .layer-b{padding:14px 16px}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  .box{
+    flex:1 1 150px; min-width:140px;
+    padding:10px 12px; border-radius:6px;
+    background:var(--panel2); border:1px solid var(--line);
+  }
+  .box .t{font-size:13px; font-weight:500; margin-bottom:4px}
+  .box .d{font-size:11.5px; color:var(--fg3); line-height:1.5}
+  .box.b1{border-color:rgba(74,158,255,.4); background:rgba(74,158,255,.07)}
+  .box.b2{border-color:rgba(61,220,151,.4); background:rgba(61,220,151,.06)}
+  .box.b3{border-color:rgba(255,180,84,.4); background:rgba(255,180,84,.06)}
+  .box.b4{border-color:rgba(199,146,234,.4); background:rgba(199,146,234,.06)}
+  .box.b5{border-color:rgba(255,107,122,.4); background:rgba(255,107,122,.06)}
+  .arrow{
+    text-align:center; color:var(--fg3); font-size:16px;
+    padding:6px 0; letter-spacing:4px;
+  }
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:13px}
+  th,td{
+    text-align:left; padding:9px 12px;
+    border-bottom:1px solid var(--line); vertical-align:top;
+  }
+  th{color:var(--fg2); font-weight:500; background:var(--panel2); font-size:12px}
+  td{color:var(--fg2)}
+  code{
+    font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+    font-size:12px; padding:1px 5px; border-radius:4px;
+    background:var(--panel2); color:var(--c1); border:1px solid var(--line);
+  }
+  pre{
+    font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+    font-size:12px; line-height:1.6; padding:14px 16px; overflow-x:auto;
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px;
+    color:var(--fg2); margin:12px 0;
+  }
+  .note{
+    padding:12px 16px; border-radius:6px; margin:14px 0;
+    background:rgba(255,180,84,.07); border-left:3px solid var(--c3);
+    font-size:13px; color:var(--fg2);
+  }
+  .note.g{background:rgba(61,220,151,.06); border-left-color:var(--c2)}
+  .note.r{background:rgba(255,107,122,.07); border-left-color:var(--c5)}
+  .note b{color:var(--fg)}
+  ul{color:var(--fg2); padding-left:20px; margin:10px 0}
+  li{margin:5px 0}
+  .foot{
+    margin-top:40px; padding-top:16px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--fg3);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>卫星遥感影像智能分析助手 · 系统架构设计图</h1>
+<div class="sub">任务书「一、需求分析与系统设计」交付物 · 架构设计图</div>
+
+<div class="meta">
+  <span><b>版本</b> V1.0</span>
+  <span><b>日期</b> 2026-09-20</span>
+  <span><b>形态</b> B/S 前后端分离 · 单机部署</span>
+  <span><b>技术栈</b> React + FastAPI + LangGraph + sqlite3</span>
+  <span><b>对应实现</b> <code>gee-assistant/backend/app/</code></span>
+</div>
+
+<h2>一、总体架构</h2>
+
+<p>系统为前后端分离的 B/S 架构，**单端口同源托管**：生产环境下 FastAPI 既提供 REST API，也直接托管 React 构建产物（<code>frontend/dist</code>），因此浏览器侧不需要跨域（CORS 白名单仅用于开发期 Vite 端口）。</p>
+
+<div class="layer">
+  <div class="layer-h"><span class="tag">客户端层</span> 浏览器（PC / 平板 / 手机）</div>
+  <div class="layer-b">
+    <div class="row">
+      <div class="box b1"><div class="t">React SPA</div><div class="d">对话 / 结果双栏布局，4 档响应式断点</div></div>
+      <div class="box b1"><div class="t">地图渲染</div><div class="d">Leaflet + OSM 底图，GeoJSON / 瓦片叠加</div></div>
+      <div class="box b1"><div class="t">图表渲染</div><div class="d">ECharts，折线 / 柱状 / 饼图</div></div>
+    </div>
+    <div class="arrow">▼ HTTPS / JSON + Cookie 会话</div>
+  </div>
+</div>
+
+<div class="layer">
+  <div class="layer-h"><span class="tag g">服务层</span> FastAPI 应用（<code>app/main.py</code>）</div>
+  <div class="layer-b">
+    <div class="row">
+      <div class="box b2"><div class="t">鉴权与会话</div><div class="d"><code>auth.py</code> · PBKDF2 密码哈希 · HttpOnly Cookie</div></div>
+      <div class="box b2"><div class="t">配额与并发</div><div class="d">4 层额度，超限 429 + Retry-After</div></div>
+      <div class="box b2"><div class="t">静态托管</div><div class="d">SPA 兜底路由 + 路径穿越防护</div></div>
+    </div>
+    <div class="arrow">▼</div>
+    <div class="row">
+      <div class="box b2"><div class="t">REST API（25 端点）</div><div class="d">tasks / regions / preferences / knowledge / tile / auth</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="layer">
+  <div class="layer-h"><span class="tag y">编排层</span> LangGraph 状态机（<code>app/orchestrator.py</code>）</div>
+  <div class="layer-b">
+    <div class="row">
+      <div class="box b3"><div class="t">generate</div><div class="d">LLM 生成 GEE 代码（<code>codegen.py</code>）</div></div>
+      <div class="box b3"><div class="t">execute</div><div class="d">调用可插拔执行后端</div></div>
+      <div class="box b3"><div class="t">repair</div><div class="d">错误分类 + 位置定位 + 重新生成</div></div>
+      <div class="box b3"><div class="t">finalize</div><div class="d">终态判定与用户建议</div></div>
+    </div>
+    <p style="margin:12px 0 0;font-size:12.5px">循环：<code>generate → execute →（失败且可重试）→ repair → execute</code>；鉴权类错误不重试，超时类最多修一次。</p>
+  </div>
+</div>
+
+<div class="layer">
+  <div class="layer-h"><span class="tag p">执行层</span> 可插拔执行后端（<code>app/execution/</code>）</div>
+  <div class="layer-b">
+    <div class="row">
+      <div class="box b4"><div class="t">GEEBackend</div><div class="d">真实 Earth Engine，凭据校验后走受限沙箱</div></div>
+      <div class="box b4"><div class="t">OfflineBackend</div><div class="d">离线样例结果兜底，无凭据也能演示全流程</div></div>
+    </div>
+    <div class="arrow">▼</div>
+    <div class="row">
+      <div class="box b4"><div class="t">受限沙箱</div><div class="d">子进程隔离 · 封网络 / 子进程 / 文件系统</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="layer">
+  <div class="layer-h"><span class="tag r">存储层</span> sqlite3（<code>data/app.db</code>）</div>
+  <div class="layer-b">
+    <div class="row">
+      <div class="box b5"><div class="t">users / sessions</div><div class="d">账号与会话，密码加盐哈希</div></div>
+      <div class="box b5"><div class="t">tasks</div><div class="d">任务描述、生成代码、结果、耗时</div></div>
+      <div class="box b5"><div class="t">regions / user_settings</div><div class="d">区域与偏好，<code>(key, user_id)</code> 联合主键</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="layer">
+  <div class="layer-h"><span class="tag">外部依赖</span> 出网链路</div>
+  <div class="layer-b">
+    <div class="row">
+      <div class="box b1"><div class="t">DeepSeek API</div><div class="d">国内直连，OpenAI 兼容接口</div></div>
+      <div class="box b1"><div class="t">Google Earth Engine</div><div class="d">经本机代理隧道，凭据 Fernet 加密</div></div>
+    </div>
+  </div>
+</div>
+
+<h2>二、模块职责与实现映射</h2>
+
+<table>
+  <tr><th style="width:22%">模块</th><th style="width:26%">实现文件</th><th>职责</th></tr>
+  <tr><td>服务入口</td><td><code>app/main.py</code></td><td>25 个 REST 端点、鉴权依赖、配额校验、静态托管与 SPA 兜底</td></tr>
+  <tr><td>编排状态机</td><td><code>app/orchestrator.py</code></td><td>LangGraph 图：生成 → 执行 → 修复 → 终态；管理重试与无改动检测</td></tr>
+  <tr><td>意图解析</td><td><code>app/intent.py</code></td><td>自然语言 → 结构化参数（区域 / 时间 / 类型 / 云量），参数不全时生成澄清问题</td></tr>
+  <tr><td>多步规划</td><td><code>app/planner.py</code></td><td>一句话拆成多个可执行子任务</td></tr>
+  <tr><td>代码生成</td><td><code>app/codegen.py</code></td><td>提示词模板库 + RAG 知识注入 → 生成 GEE 代码；含资源规则 a–k</td></tr>
+  <tr><td>自动调试</td><td><code>app/debugger.py</code></td><td>错误四分类、从 traceback 定位出错行、识别回调式调用的行号陷阱</td></tr>
+  <tr><td>执行后端</td><td><code>app/execution/</code></td><td><code>base.py</code> 抽象 + <code>gee.py</code> 真实后端 + <code>offline.py</code> 兜底</td></tr>
+  <tr><td>沙箱</td><td><code>app/execution/_runner.py</code></td><td>受限子进程执行，封网络 / 子进程 / 敏感文件</td></tr>
+  <tr><td>数据访问</td><td><code>app/task_store.py</code></td><td>任务 / 区域 / 偏好 CRUD，全部按 <code>user_id</code> 隔离</td></tr>
+  <tr><td>安全存储</td><td><code>app/secure_store.py</code></td><td>GEE 凭据 Fernet 对称加密，密钥单独落盘</td></tr>
+  <tr><td>凭据与连通性</td><td><code>app/gee_auth.py</code></td><td>GEE 凭据诊断与初始化</td></tr>
+  <tr><td>日期基准</td><td><code>app/daterange.py</code></td><td>默认分析区间的唯一来源（「最近一个完整自然年」）</td></tr>
+  <tr><td>知识库</td><td><code>app/knowledge.py</code></td><td>遥感数据集语料与检索，供代码生成时注入</td></tr>
+  <tr><td>瓦片代理</td><td><code>app/tile_proxy.py</code></td><td>代理地图瓦片与底图，避免前端直连外网</td></tr>
+  <tr><td>前端主界面</td><td><code>frontend/src/App.jsx</code></td><td>对话 / 结果双栏、模式切换、偏好抽屉、历史任务</td></tr>
+</table>
+
+<h2>三、核心链路时序</h2>
+
+<pre>
+用户                前端 SPA            FastAPI             LangGraph          执行后端        外部
+ │                    │                   │                    │                  │              │
+ │ 一句中文分析需求    │                   │                    │                  │              │
+ ├───────────────────►│  POST /api/parse  │                    │                  │              │
+ │                    ├──────────────────►│  intent.parse()    │                  │              │
+ │                    │◄──────────────────┤  参数齐全？        │                  │              │
+ │                    │  POST /api/tasks  │                    │                  │              │
+ │                    ├──────────────────►│  配额校验(锁内)    │                  │              │
+ │                    │◄──────────────────┤  task_id           │                  │              │
+ │                    │                   ├─── run_analysis ──►│  generate        │              │
+ │                    │                   │                    ├─────────────────►│  LLM 生成代码 │
+ │                    │                   │                    │  execute         │              │
+ │                    │                   │                    ├─────────────────►│  GEE / 离线  │
+ │                    │                   │                    │  失败→repair     │              │
+ │                    │  GET /api/tasks/{id}（轮询）           │  （最多 N 次）   │              │
+ │                    ├──────────────────►│◄───────────────────┤  终态            │              │
+ │                    │◄──────────────────┤  图层/图表/代码/日志                  │              │
+ │◄───────────────────┤  地图 + 图表渲染   │                    │                  │              │
+</pre>
+
+<h2>四、关键设计决策</h2>
+
+<h3>4.1 可插拔执行后端</h3>
+<p>GEE 账号与国内网络可达性是外部不确定因素，因此把执行抽象为 <code>ExecutionBackend</code> 接口，提供两个实现。演示与开发可选择离线后端，保证「无凭据也能跑通全流程」；凭据就绪后切 <code>EXECUTION_BACKEND=gee</code> 即走真实链路，上层编排与前端无需改动。</p>
+
+<h3>4.2 单端口同源托管</h3>
+<p>前端构建产物由 FastAPI 直接托管，浏览器与服务同源，因此生产环境不需要 CORS。这既简化部署（一个进程对外），也消除了跨域带来的 Cookie 策略约束。</p>
+
+<h3>4.3 沙箱的存在理由</h3>
+<p>生成代码由大模型按用户输入产出，属于**不可信输入**。沙箱在子进程里执行它，并封禁网络访问、子进程创建、以及敏感文件读取（<code>.env</code> / <code>*.db</code> / 凭据目录）。加固点位于工具链校验之后、用户代码执行之前 —— 顺序错了会把工具链自己的配置读取一起封死。</p>
+
+<h3>4.4 数据隔离</h3>
+<p>所有业务表带 <code>user_id</code>，语义统一为 <code>0 = 无主/全局默认</code>、<code>&gt;0 = 属于该用户</code>。越权访问返回 <strong>404 而非 403</strong> —— 403 会暴露"该 ID 确实存在"，把主键空间变成可探测的泄漏面。</p>
+
+<h3>4.5 日期基准唯一来源</h3>
+<p>默认分析区间集中在 <code>app/daterange.py</code>，口径为「最近一个完整自然年」。历史上该基准曾散落 8 处并整体过期一年以上，因此新增了一条回归守卫，断言"值随当天推算"而非"值等于某常量"。</p>
+
+<h2>五、部署拓扑</h2>
+
+<pre>
+                   ┌──────────────────────────────────────┐
+   公网访问  ────►  │  cpolar 临时隧道（免费版）            │
+   （佐证用）       │  域名随机、会自行断开                 │
+                   └──────────────┬───────────────────────┘
+                                  │ 转发
+   演示主路径 ────────────────────►│
+   http://127.0.0.1:8010          ▼
+                   ┌──────────────────────────────────────┐
+                   │  FastAPI (uvicorn)  :8010             │
+                   │   ├── REST API                        │
+                   │   └── 静态托管 frontend/dist          │
+                   └──────┬────────────────────┬──────────┘
+                          │                    │
+                   ┌──────▼──────┐      ┌──────▼──────────┐
+                   │ data/app.db │      │ 沙箱子进程       │
+                   │  sqlite3    │      │  ├── GEE 云端    │
+                   └─────────────┘      │  └── DeepSeek    │
+                                        └─────────────────┘
+</pre>
+
+<div class="note">
+  <b>部署现实</b>：演示主路径定为本地直连 <code>http://127.0.0.1:8010</code>。原因见 <code>docs/产品评估报告.md</code>：cpolar 免费版隧道实测一天内断开两次、子域名变更三次，且传输延迟明显；公网地址仅用于证明"外网可访问"。
+</div>
+
+<div class="foot">
+  对应任务书「四、项目任务分解」任务 1 交付物：架构设计图。实现细节见 <code>docs/API文档.md</code>、<code>docs/数据库设计.md</code>、<code>docs/部署手册.md</code>。
+</div>
+
+</div>
+</body>
+</html>

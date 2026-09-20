@@ -1,0 +1,59 @@
+====================================================================================
+卫星遥感影像智能分析助手 —— 后端实证报告
+生成时间: 2026-09-20 14:24:55
+====================================================================================
+
+【一】后端代码规模
+  app(root)      22 文件  4470 行
+  execution       6 文件  1228 行
+  总计             28 文件  5698 行
+
+【二】编排链路（自然语言 → 结果）
+  intent                  210 行
+  planner                 150 行
+  codegen                 364 行
+  orchestrator            154 行
+  execution.sandbox       157 行
+  execution._runner       747 行
+  execution.gee            78 行
+  execution.offline       217 行
+  debugger                233 行
+  conclusion              159 行
+
+【三】安全层
+  auth                    260 行
+  crypto                  245 行
+  secure_store            116 行
+  task_store              648 行
+  tile_proxy              119 行
+  net_retry               156 行
+
+【四】配额配置（4 层）
+  全局并发上限        MAX_CONCURRENT_TASKS          = 3
+  单用户并发上限      MAX_CONCURRENT_TASKS_PER_USER = 2
+  单用户每小时上限    TASK_RATE_LIMIT_PER_HOUR      = 20
+  单用户每天上限      TASK_RATE_LIMIT_PER_DAY       = 60
+
+【五】字段级加密
+  加密字段  task   : ('region', 'code', 'result', 'logs', 'feedback_note')
+  加密字段  region : ('name', 'desc')
+  密文前缀: ENC1:  盲索引前缀: BIDX1:
+  tasks 表非空字段: 254 个，已加密 254 个，明文泄漏 0 个  → 100.00%
+
+【六】生产库数据
+  users               2 行
+  tasks              64 行
+  regions             0 行
+  sessions           35 行
+  user_settings       1 行
+
+  按状态: {'failed': 5, 'succeeded': 59}
+  按类型:
+     ndvi                 27/28 成功
+     water                16/17 成功
+     classification       9/10 成功
+     change_detection     7/9 成功
+
+【七】用户
+  id=4  username='admin'  admin=True
+  id=5  username='lvzhi'  admin=False

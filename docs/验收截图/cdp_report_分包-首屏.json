@@ -1,0 +1,78 @@
+{
+  "consoleErrors": [],
+  "tiles": [],
+  "apiRequests": [
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/auth/me"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/auth/me"
+    }
+  ],
+  "resources": [
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/index-B-TJpHEM.js",
+      "file": "index-B-TJpHEM.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/css",
+      "url": "http://127.0.0.1:8012/assets/index-Bpe7PjK9.css",
+      "file": "index-Bpe7PjK9.css"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-DRVYRUvd.js",
+      "file": "vendor-DRVYRUvd.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-react-BJx6hX8p.js",
+      "file": "vendor-react-BJx6hX8p.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-antd-B4KyjiK-.js",
+      "file": "vendor-antd-B4KyjiK-.js"
+    }
+  ],
+  "steps": [
+    "页面已加载: http://127.0.0.1:8012/",
+    "DOM 探针: {\"title\":\"卫星遥感影像智能分析助手\",\"bodyTextLen\":71,\"imgTotal\":0,\"imgLoaded\":0,\"tilesLoadedByPrefix\":{\"/api/tile/\":0,\"/api/basemap/\":0},\"clipExists\":false,\"clipSize\":null,\"sample\":[]}",
+    "截图: app_screenshot.png"
+  ],
+  "browser": "HeadlessChrome/153.0.8010.47",
+  "domProbe": {
+    "title": "卫星遥感影像智能分析助手",
+    "bodyTextLen": 71,
+    "imgTotal": 0,
+    "imgLoaded": 0,
+    "tilesLoadedByPrefix": {
+      "/api/tile/": 0,
+      "/api/basemap/": 0
+    },
+    "clipExists": false,
+    "clipSize": null,
+    "sample": []
+  },
+  "resourceSummary": {
+    "js": [
+      "index-B-TJpHEM.js",
+      "vendor-DRVYRUvd.js",
+      "vendor-react-BJx6hX8p.js",
+      "vendor-antd-B4KyjiK-.js"
+    ],
+    "css": [
+      "index-Bpe7PjK9.css"
+    ]
+  }
+}

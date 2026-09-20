@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>卫星遥感影像智能分析助手 · 交互原型图</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e2229; --line:#2c313a;
+    --fg:#e6e8ec; --fg2:#a8aeb8; --fg3:#6f7681;
+    --c1:#4a9eff; --c2:#3ddc97; --c3:#ffb454; --c4:#c792ea; --c5:#ff6b7a;
+    --r:8px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 64px;
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    font-size:14px; line-height:1.65;
+  }
+  .wrap{max-width:1180px; margin:0 auto}
+  h1{font-size:22px; font-weight:500; margin:0 0 6px}
+  .sub{color:var(--fg3); font-size:13px; margin-bottom:8px}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:8px 20px;
+    padding:12px 16px; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--r); margin:18px 0 30px; font-size:13px;
+  }
+  .meta b{color:var(--fg2); font-weight:400}
+  h2{font-size:16px; font-weight:500; margin:44px 0 14px; padding-left:10px; border-left:3px solid var(--c1)}
+  h3{font-size:14px; font-weight:500; margin:26px 0 10px; color:var(--fg2)}
+  p{color:var(--fg2); margin:10px 0}
+  code{
+    font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+    font-size:12px; padding:1px 5px; border-radius:4px;
+    background:var(--panel2); color:var(--c1); border:1px solid var(--line);
+  }
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:13px}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{color:var(--fg2); font-weight:500; background:var(--panel2); font-size:12px}
+  td{color:var(--fg2)}
+  .note{
+    padding:12px 16px; border-radius:6px; margin:14px 0;
+    background:rgba(255,180,84,.07); border-left:3px solid var(--c3);
+    font-size:13px; color:var(--fg2);
+  }
+  .note.g{background:rgba(61,220,151,.06); border-left-color:var(--c2)}
+  .note b{color:var(--fg)}
+  pre{
+    font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+    font-size:12px; line-height:1.6; padding:14px 16px; overflow-x:auto;
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px;
+    color:var(--fg2); margin:12px 0;
+  }
+
+  /* ---- wireframe ---- */
+  .wf{
+    border:1px solid var(--line); border-radius:var(--r);
+    background:var(--panel); overflow:hidden; margin:16px 0;
+  }
+  .wf-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 14px; background:var(--panel2); border-bottom:1px solid var(--line);
+    font-size:11.5px; color:var(--fg3);
+  }
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .wf-cap{padding:9px 14px; font-size:12px; color:var(--fg3); border-top:1px solid var(--line); background:var(--panel2)}
+
+  /* app shell mock */
+  .shell{background:#101318; padding:14px}
+  .hdr{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 12px; border:1px solid var(--line); border-radius:6px;
+    background:var(--panel2); margin-bottom:10px;
+  }
+  .hdr .t{font-size:12.5px; font-weight:500}
+  .tags{display:flex; gap:6px}
+  .tag{
+    font-size:10.5px; padding:2px 8px; border-radius:9px;
+    border:1px solid var(--line); background:#141821; color:var(--fg3); white-space:nowrap;
+  }
+  .tag.on{color:var(--c2); border-color:rgba(61,220,151,.4); background:rgba(61,220,151,.08)}
+  .tag.warn{color:var(--c3); border-color:rgba(255,180,84,.4); background:rgba(255,180,84,.08)}
+  .tag.err{color:var(--c5); border-color:rgba(255,107,122,.4); background:rgba(255,107,122,.08)}
+  .tag.blue{color:var(--c1); border-color:rgba(74,158,255,.4); background:rgba(74,158,255,.08)}
+
+  .body{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media (max-width:820px){ .body{grid-template-columns:1fr} }
+
+  .card{
+    border:1px solid var(--line); border-radius:6px;
+    background:var(--panel2); overflow:hidden; margin-bottom:10px;
+  }
+  .card-h{
+    padding:8px 12px; font-size:12px; font-weight:500;
+    border-bottom:1px solid var(--line); background:#1a1e26;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .card-b{padding:11px 12px}
+
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:5px; overflow:hidden}
+  .seg span{font-size:10.5px; padding:3px 10px; color:var(--fg3)}
+  .seg span.sel{background:rgba(74,158,255,.16); color:var(--c1)}
+
+  .chat-area{
+    border:1px dashed var(--line); border-radius:5px; background:#121620;
+    padding:10px; min-height:78px;
+  }
+  .bub{
+    max-width:80%; padding:6px 10px; border-radius:9px; font-size:11.5px;
+    margin-bottom:7px; line-height:1.5;
+  }
+  .bub.u{background:rgba(74,158,255,.18); color:#cfe3ff; margin-left:auto}
+  .bub.a{background:#1c212b; color:var(--fg2); border:1px solid var(--line)}
+  .bub.hint{
+    background:transparent; border:1px dashed var(--line);
+    color:var(--fg3); font-size:11px; max-width:100%;
+  }
+  .exchips{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px}
+  .chip{
+    font-size:10.5px; padding:3px 9px; border-radius:9px;
+    border:1px solid rgba(74,158,255,.35); background:rgba(74,158,255,.09);
+    color:#9dc4f5;
+  }
+  .chip.gb{border-color:var(--line); background:#161a22; color:var(--fg3)}
+
+  .inbar{display:flex; gap:6px; margin-top:9px}
+  .infield{
+    flex:1; padding:6px 10px; border-radius:5px; font-size:11px;
+    border:1px solid var(--line); background:#121620; color:var(--fg3);
+  }
+  .btn{
+    padding:6px 14px; border-radius:5px; font-size:11px;
+    background:rgba(74,158,255,.85); color:#fff; white-space:nowrap;
+  }
+  .btn.ghost{background:transparent; border:1px solid var(--line); color:var(--fg2)}
+
+  .collap{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:7px 11px; border:1px solid var(--line); border-radius:5px;
+    background:#161a22; font-size:11px; color:var(--fg2); margin-top:9px;
+  }
+  .mapslot{
+    height:96px; border-radius:5px; display:flex; align-items:center; justify-content:center;
+    background:
+      repeating-linear-gradient(0deg,transparent,transparent 15px,rgba(255,255,255,.03) 15px,rgba(255,255,255,.03) 16px),
+      repeating-linear-gradient(90deg,transparent,transparent 15px,rgba(255,255,255,.03) 15px,rgba(255,255,255,.03) 16px),
+      #141a24;
+    border:1px solid var(--line); font-size:11px; color:var(--fg3);
+  }
+  .chartslot{
+    height:74px; border-radius:5px; border:1px solid var(--line); background:#141a24;
+    display:flex; align-items:flex-end; gap:4px; padding:9px 12px;
+  }
+  .chartslot i{
+    flex:1; background:linear-gradient(180deg,rgba(74,158,255,.75),rgba(74,158,255,.22));
+    border-radius:2px 2px 0 0; display:block;
+  }
+  .logline{font-size:10.5px; color:var(--fg3); font-family:ui-monospace,monospace; line-height:1.7}
+  .lst{font-size:11px; color:var(--fg2); padding:6px 0; border-bottom:1px solid rgba(255,255,255,.04)}
+  .lst span{display:block; font-size:10px; color:var(--fg3)}
+
+  /* responsive mock */
+  .phone{
+    width:200px; border:6px solid #232833; border-radius:18px; overflow:hidden;
+    background:#101318; flex-shrink:0;
+  }
+  .phone .shell{padding:8px}
+  .phone .body{grid-template-columns:1fr; gap:8px}
+  .phone .hdr{flex-direction:column; align-items:flex-start; gap:6px}
+  .phone .tags{flex-wrap:wrap}
+  .trio{display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start}
+
+  ul{color:var(--fg2); padding-left:20px; margin:10px 0}
+  li{margin:5px 0}
+  .foot{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font-size:12px; color:var(--fg3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>卫星遥感影像智能分析助手 · 交互原型图</h1>
+<div class="sub">任务书「六、WebApp 需求分析与原型设计」交付物 · 交互原型图</div>
+
+<div class="meta">
+  <span><b>版本</b> V1.0</span>
+  <span><b>日期</b> 2026-09-20</span>
+  <span><b>组件库</b> Ant Design</span>
+  <span><b>状态</b> 原型全部对应已实现界面</span>
+  <span><b>对应实现</b> <code>frontend/src/App.jsx</code></span>
+</div>
+
+<div class="note g">
+  <b>说明</b>：本原型图不是"设想稿"，而是按已落地界面反向绘制的线框 —— 下文每个界面元素都能在 <code>App.jsx</code> 中找到对应实现，可作为验收对照。
+</div>
+
+<h2>一、主界面（桌面端）</h2>
+
+<p>进入系统后的默认界面。上方是全局状态栏，下方为左右分栏：左栏「输入与任务管理」，右栏「结果展示」。</p>
+
+<div class="wf">
+  <div class="wf-bar">
+    <span class="dot" style="background:#ff6b7a"></span>
+    <span class="dot" style="background:#ffb454"></span>
+    <span class="dot" style="background:#3ddc97"></span>
+    <span style="margin-left:10px">主界面 · 桌面端 ≥1024px</span>
+  </div>
+  <div class="shell">
+    <!-- header -->
+    <div class="hdr">
+      <span class="t">卫星遥感影像智能分析助手</span>
+      <div class="tags">
+        <span class="tag on">后端 在线</span>
+        <span class="tag blue">执行后端：gee</span>
+        <span class="tag on">LLM 已配置</span>
+      </div>
+    </div>
+
+    <div class="body">
+      <!-- LEFT -->
+      <div>
+        <div class="card">
+          <div class="card-h">
+            <span>智能对话</span>
+            <span style="font-size:10px;color:var(--c1)">分析偏好</span>
+          </div>
+          <div class="card-b">
+            <div class="seg" style="margin-bottom:9px">
+              <span class="sel">咨询 Ask</span><span>执行 Do</span>
+            </div>
+            <div class="chat-area">
+              <div class="bub hint">执行模式：用一句话描述你的分析需求</div>
+              <div class="bub u">帮我分析太湖流域 6-8 月的植被状况</div>
+              <div class="bub a">已识别：区域=太湖流域，类型=植被指数，时间=6–8月<br>参数已就绪，正在生成分析代码…</div>
+            </div>
+            <div class="exchips">
+              <span class="chip">分析太湖流域 6-8 月植被状况</span>
+              <span class="chip">提取洞庭湖的水体范围</span>
+            </div>
+            <div class="inbar">
+              <span class="infield">描述你的分析需求…</span>
+              <span class="btn">发送</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px">
+              <span class="tag on">参数已就绪，自动开始分析</span>
+              <span style="font-size:10px;color:var(--fg3)">重置对话</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="collap"><span>手动调整参数（高级）</span><span>▾</span></div>
+
+        <div class="card" style="margin-top:10px">
+          <div class="card-h">任务状态</div>
+          <div class="card-b">
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+              <span class="tag on">成功</span>
+              <span style="font-size:10px;color:var(--fg3)">ID: a1b2c3d4e5f6</span>
+              <span style="font-size:10px;color:var(--fg3)">尝试 1 次</span>
+            </div>
+            <div class="logline">[生成] 代码来源=deepseek</div>
+            <div class="logline">[执行] 第 1 次执行成功</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:10px">
+          <div class="card-h">历史任务</div>
+          <div class="card-b">
+            <div class="lst">植被指数 · 太湖流域<span>成功 · 2026-09-20 09:12</span></div>
+            <div class="lst">水体提取 · 洞庭湖<span>成功 · 2026-09-19 16:40</span></div>
+            <div class="lst" style="border:none">变化检测 · 鄱阳湖<span>成功 · 2026-09-19 11:05</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:9px">
+          <span class="btn ghost">导出报告</span>
+        </div>
+
+        <div class="card">
+          <div class="card-h">NDVI 植被指数图层</div>
+          <div class="card-b">
+            <div class="mapslot">Leaflet 地图 · 自动 fitBounds 定位分析区域</div>
+            <div style="display:flex;gap:9px;margin-top:8px;font-size:10px;color:var(--fg3)">
+              <span>■ 低</span><span>■ 中</span><span>■ 高</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">逐月 NDVI 均值</div>
+          <div class="card-b">
+            <div class="chartslot">
+              <i style="height:32%"></i><i style="height:41%"></i><i style="height:55%"></i>
+              <i style="height:68%"></i><i style="height:79%"></i><i style="height:88%"></i>
+              <i style="height:92%"></i><i style="height:85%"></i><i style="height:70%"></i>
+              <i style="height:56%"></i><i style="height:40%"></i><i style="height:30%"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="collap"><span>查看生成的 GEE 代码</span><span>▸</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="wf-cap">线框 1 · 桌面端主界面（对话 + 地图 + 图表 + 代码）</div>
+</div>
+
+<h2>二、状态与反馈设计</h2>
+
+<p>界面用标签统一表达系统状态，用户无需翻日志即可判断"卡在哪"。这套标签在所有界面复用。</p>
+
+<table>
+  <tr><th style="width:20%">状态</th><th style="width:16%">呈现</th><th>含义与用户动作</th></tr>
+  <tr><td>排队中</td><td><span class="tag">pending</span></td><td>任务已受理、等待并发名额。无需操作</td></tr>
+  <tr><td>执行中</td><td><span class="tag blue">running</span></td><td>附转圈动画。可继续看日志逐行出现</td></tr>
+  <tr><td>成功</td><td><span class="tag on">succeeded</span></td><td>结果区渲染地图与图表</td></tr>
+  <tr><td>失败</td><td><span class="tag err">failed</span></td><td>错误卡片显示分类 + 原文 + 处置建议</td></tr>
+  <tr><td>参数未齐</td><td><span class="tag warn">还需补充参数</span></td><td>对话区追问缺失项，用户续答即可</td></tr>
+  <tr><td>参数就绪</td><td><span class="tag on">参数已就绪</span></td><td>自动提交，无需再点按钮</td></tr>
+  <tr><td>超额</td><td><span class="tag err">429 配额</span></td><td>直接显示后端原文与等待时长</td></tr>
+</table>
+
+<h2>三、核心交互流程</h2>
+
+<h3>3.1 主流程：一句话 → 结果</h3>
+
+<div class="wf">
+  <div class="wf-bar"><span style="margin-left:0">流程 A · 参数一次给全</span></div>
+  <div class="shell" style="padding:16px">
+    <pre style="margin:0">
+用户输入自然语言
+     │
+     ▼
+POST /api/parse ── 意图解析（区域 / 类型 / 时间 / 云量）
+     │
+     ├── 参数齐全 ─────────────────────────────────► 自动提交 POST /api/tasks
+     │                                                      │
+     │                                             轮询 GET /api/tasks/{id}
+     │                                                      │
+     │                                        ┌─────────────┴─────────────┐
+     │                                        ▼                           ▼
+     │                                  执行中（Spin）              成功 / 失败
+     │                                                                    │
+     │                                        ┌───────────────────────────┤
+     │                                        ▼                           ▼
+     │                              地图 + 图表 + 代码             错误卡片 + 日志
+     │
+     └── 缺参数 ──► 返回澄清问题 ──► 用户续答 ──► 合并 partial 再解析（回到上分支）
+    </pre>
+  </div>
+  <div class="wf-cap">流程 A · 对话式分析主链路</div>
+</div>
+
+<h3>3.2 多轮澄清：不强迫用户一次说全</h3>
+
+<table>
+  <tr><th style="width:8%">轮次</th><th style="width:38%">用户输入</th><th>系统响应</th></tr>
+  <tr><td>1</td><td>"我想看洞庭湖的情况"</td><td>识别 <code>区域=洞庭湖</code>，追问"想做哪类分析？"</td></tr>
+  <tr><td>2</td><td>"我要做水体提取"</td><td>合并已确认的洞庭湖 → 水体提取，参数就绪自动执行</td></tr>
+  <tr><td>3</td><td>（无需输入）</td><td>任务完成，右侧渲染地图与图表</td></tr>
+</table>
+
+<div class="wf">
+  <div class="wf-bar"><span style="margin-left:0">多轮澄清的界面表现</span></div>
+  <div class="shell">
+    <div class="card">
+      <div class="card-h">智能对话</div>
+      <div class="card-b">
+        <div class="chat-area">
+          <div class="bub u">我想看洞庭湖的情况</div>
+          <div class="bub a">已识别分析区域：<b>洞庭湖</b><br>请问想做哪类分析？（植被指数 / 水体提取 / 地表分类 / 变化检测）</div>
+          <div class="bub u">我要做水体提取</div>
+          <div class="bub a">已合并：区域=洞庭湖，类型=水体提取，时间=最近一个完整自然年<br>参数已就绪，开始分析…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wf-cap">线框 2 · 多轮澄清（区域先确认，类型后补充）</div>
+</div>
+
+<h3>3.3 咨询 / 执行双模式</h3>
+
+<div class="wf">
+  <div class="wf-bar"><span style="margin-left:0">模式切换（Segmented）</span></div>
+  <div class="shell">
+    <div class="body">
+      <div>
+        <div class="card">
+          <div class="card-h"><span>咨询 Ask</span><span class="tag blue">当前</span></div>
+          <div class="card-b">
+            <div class="seg" style="margin-bottom:9px"><span class="sel">咨询 Ask</span><span>执行 Do</span></div>
+            <div class="chat-area">
+              <div class="bub u">NDVI 和 EVI 有什么区别？</div>
+              <div class="bub a">以专家身份解释两者差异与适用场景…</div>
+            </div>
+            <div class="exchips">
+              <span class="chip">NDVI 和 EVI 有什么区别？</span>
+              <span class="chip">怎么选择水体提取的指数？</span>
+            </div>
+            <div class="inbar"><span class="infield">咨询遥感 / GEE 相关问题…</span><span class="btn">发送</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-h"><span>执行 Do</span><span class="tag on">当前</span></div>
+          <div class="card-b">
+            <div class="seg" style="margin-bottom:9px"><span>咨询 Ask</span><span class="sel">执行 Do</span></div>
+            <div class="chat-area">
+              <div class="bub hint">执行模式：用一句话描述你的分析需求</div>
+            </div>
+            <div class="exchips">
+              <span class="chip">分析太湖流域 6-8 月植被状况</span>
+              <span class="chip">提取洞庭湖的水体范围</span>
+            </div>
+            <div class="inbar"><span class="infield">描述你的分析需求…</span><span class="btn">发送</span></div>
+            <div style="margin-top:9px">
+              <span style="font-size:10px;color:var(--fg3)">常用区域：</span>
+              <span class="chip gb">太湖</span> <span class="chip gb">洞庭湖</span> <span class="chip gb">鄱阳湖</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wf-cap">线框 3 · 双模式对比（咨询不落库、不执行；执行走完整链路）</div>
+</div>
+
+<h2>四、响应式适配</h2>
+
+<p>任务书 3.1 要求适配 PC 端与移动端浏览器。实现为 4 档断点，全部落在样式层，未改动组件结构。</p>
+
+<div class="trio">
+  <div class="wf" style="flex:1 1 340px">
+    <div class="wf-bar"><span style="margin-left:0">≥1024px · 桌面</span></div>
+    <div class="shell">
+      <div class="hdr"><span class="t">遥感分析助手</span><div class="tags"><span class="tag on">在线</span></div></div>
+      <div class="body">
+        <div class="card"><div class="card-h">智能对话</div><div class="card-b"><div class="chat-area" style="min-height:44px"></div></div></div>
+        <div class="card"><div class="card-h">结果</div><div class="card-b"><div class="mapslot" style="height:60px">地图</div></div></div>
+      </div>
+    </div>
+    <div class="wf-cap">左右并排，左栏 360px</div>
+  </div>
+
+  <div class="wf" style="flex:1 1 300px">
+    <div class="wf-bar"><span style="margin-left:0">768–1023px · 平板</span></div>
+    <div class="shell">
+      <div class="hdr"><span class="t">遥感分析助手</span><div class="tags"><span class="tag on">在线</span></div></div>
+      <div class="body">
+        <div class="card"><div class="card-h">智能对话</div><div class="card-b"><div class="chat-area" style="min-height:40px"></div></div></div>
+        <div class="card"><div class="card-h">结果</div><div class="card-b"><div class="mapslot" style="height:56px">地图</div></div></div>
+      </div>
+    </div>
+    <div class="wf-cap">仍并排，左栏收窄至 300px</div>
+  </div>
+
+  <div class="phone">
+    <div class="shell">
+      <div class="hdr"><span class="t" style="font-size:10px">遥感分析助手</span><div class="tags"><span class="tag on" style="font-size:9px">在线</span></div></div>
+      <div class="body">
+        <div class="card"><div class="card-h" style="font-size:10px">智能对话</div><div class="card-b"><div class="chat-area" style="min-height:36px"></div></div></div>
+        <div class="card"><div class="card-h" style="font-size:10px">结果</div><div class="card-b"><div class="mapslot" style="height:48px;font-size:9px">地图</div></div></div>
+      </div>
+    </div>
+    <div class="wf-cap" style="border:none;background:transparent;padding:8px 0">≤767px · 单列堆叠，对话优先</div>
+  </div>
+</div>
+
+<div class="note">
+  <b>移动端最容易漏的一点</b>：单列堆叠后，容器高度必须从 <code>height: 100vh</code> 改为 <code>min-height</code>，否则结果区会被压成一条缝、或与页面滚动打架。另有 3 处写死宽度（登录卡片 360px、修改密码弹窗 640px、偏好抽屉 380px）必须一并兜住。
+</div>
+
+<h2>五、辅助界面</h2>
+
+<div class="trio">
+  <div class="wf" style="flex:1 1 280px">
+    <div class="wf-bar"><span style="margin-left:0">登录 / 注册</span></div>
+    <div class="shell">
+      <div class="card" style="max-width:230px;margin:0 auto">
+        <div class="card-h">卫星遥感影像智能分析助手</div>
+        <div class="card-b">
+          <div class="seg" style="margin-bottom:9px"><span class="sel">登录</span><span>注册</span></div>
+          <div class="inbar" style="margin-top:0"><span class="infield">用户名</span></div>
+          <div class="inbar"><span class="infield">密码</span></div>
+          <div class="btn" style="text-align:center;margin-top:9px">登录</div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-cap">未登录时的首屏</div>
+  </div>
+
+  <div class="wf" style="flex:1 1 280px">
+    <div class="wf-bar"><span style="margin-left:0">分析偏好（右侧抽屉）</span></div>
+    <div class="shell">
+      <div class="card">
+        <div class="card-h"><span>分析偏好</span><span style="font-size:10px;color:var(--c1)">保存</span></div>
+        <div class="card-b">
+          <div style="font-size:10.5px;color:var(--fg3);margin-bottom:5px">科学规范</div>
+          <div class="infield" style="min-height:34px"></div>
+          <div style="font-size:10.5px;color:var(--fg3);margin:9px 0 5px">表达风格</div>
+          <div class="infield" style="min-height:34px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-cap">偏好随用户落库，生成代码时按用户注入</div>
+  </div>
+
+  <div class="wf" style="flex:1 1 280px">
+    <div class="wf-bar"><span style="margin-left:0">GEE 接入状态</span></div>
+    <div class="shell">
+      <div class="card">
+        <div class="card-h">Google Earth Engine 接入状态</div>
+        <div class="card-b">
+          <div class="lst">依赖包<span style="color:var(--c2)">已安装</span></div>
+          <div class="lst">凭据文件<span style="color:var(--c2)">已就绪</span></div>
+          <div class="lst" style="border:none">初始化<span style="color:var(--c2)">成功</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-cap">排障入口，逐环节显示诊断结论</div>
+  </div>
+</div>
+
+<h2>六、设计原则与实现对照</h2>
+
+<table>
+  <tr><th style="width:22%">原则</th><th style="width:34%">原型体现</th><th>实现位置</th></tr>
+  <tr><td>零门槛</td><td>首屏即对话，3 条示例 prompt 可点击直接跑</td><td><code>App.jsx</code> 示例标签</td></tr>
+  <tr><td>渐进披露</td><td>高级参数折叠；代码默认折叠</td><td><code>Collapse</code> ×3</td></tr>
+  <tr><td>透明可查</td><td>执行日志逐行可见、生成代码可展开</td><td>任务状态卡片 + 代码折叠</td></tr>
+  <tr><td>状态可感知</td><td>顶部三标签 + 任务状态标签</td><td><code>STATUS</code> 映射表</td></tr>
+  <tr><td>先理解后执行</td><td>咨询 / 执行双模式切换</td><td><code>Segmented</code> 模式开关</td></tr>
+</table>
+
+<div class="foot">
+  对应任务书「四、项目任务分解」任务 6 交付物：交互原型图。设计规范细节见 <code>docs/UI-UX设计.md</code>；响应式断点实现见 <code>frontend/src/style.css</code>。
+</div>
+
+</div>
+</body>
+</html>

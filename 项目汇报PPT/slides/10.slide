@@ -1,0 +1,14 @@
+<Slide style={{ background: '#F7F9FC' }}>
+  <Box style={{ flexDirection: 'row', flex: 1 }}>
+    <Box style={{ width: 360, background: '#1E4FA8', justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 220, fontWeight: 'bold', color: '#FFFFFF', opacity: 0.92 }}>03</Text>
+    </Box>
+    <Box style={{ flex: 1, justifyContent: 'center', padding: '0 84px', gap: 22 }}>
+      <Text style={{ fontSize: 50, fontWeight: 'bold', color: '#0E3F8C' }}>实现成果与总结</Text>
+      <Box style={{ width: 64, height: 4, background: '#FFC107' }} />
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>功能达成：核心功能全点亮，对外可访问</Text>
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>难点应对：可插拔后端化解 GEE 不可达风险</Text>
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>借鉴与展望：吸收 Earth Agent 产品设计，持续演进</Text>
+    </Box>
+  </Box>
+</Slide>

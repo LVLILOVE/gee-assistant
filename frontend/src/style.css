@@ -1,0 +1,485 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #f0f2f5;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.app-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.panel-left {
+  width: 360px;
+  min-width: 360px;
+  border-right: 1px solid #e8e8e8;
+  background: #fff;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.panel-right {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background: #f0f2f5;
+}
+
+.result-card {
+  margin-bottom: 16px;
+}
+
+/* 结论摘要卡片：左侧色条区分"这是解读"而非"这是原始数据"，
+   让它在视觉上先于地图/图表被读到。 */
+.conclusion-card {
+  border-left: 3px solid #1677ff;
+}
+
+.conclusion-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #1f1f1f;
+}
+
+.conclusion-note {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e8e8e8;
+  font-size: 12px;
+  color: #999;
+  line-height: 1.6;
+}
+
+.map-container {
+  height: 380px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #dfe6ec;
+}
+
+/* 瓦片无法代理时的显式提示：宁可说清楚，也不要地图静默空白 */
+.map-warn {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid #ffd591;
+  border-radius: 6px;
+  background: #fffbe6;
+  color: #874d00;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 登录 / 注册门 */
+.auth-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #f0f2f5;
+}
+
+.auth-card {
+  width: 360px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.auth-hint {
+  margin: 12px 0 0;
+  color: #8c8c8c;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.chart-container {
+  height: 280px;
+  width: 100%;
+}
+
+.log-line {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: #666;
+}
+
+.code-block {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: 6px;
+  padding: 12px;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.chat-box {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.chat-hint {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.6;
+  padding: 6px 8px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.example-prompts {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.example-tag {
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  margin-inline-end: 0;
+}
+
+.example-tag:hover {
+  opacity: 0.75;
+}
+
+.kb-item {
+  padding: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: #fafafa;
+}
+
+.kb-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.kb-item-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kb-item-eeid {
+  font-size: 11px;
+  color: #1677ff;
+  font-family: 'Consolas', monospace;
+  margin: 2px 0;
+  word-break: break-all;
+}
+
+.kb-item-desc {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.chat-msg {
+  display: flex;
+}
+
+.chat-msg.user {
+  justify-content: flex-end;
+}
+
+.chat-msg.assistant {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.chat-msg.user .chat-bubble {
+  background: #1677ff;
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-msg.assistant .chat-bubble {
+  background: #f0f2f5;
+  color: #333;
+  border-bottom-left-radius: 2px;
+}
+
+.region-tags {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.region-tags-label {
+  font-size: 12px;
+  color: #999;
+  margin-right: 2px;
+}
+
+.region-tag {
+  cursor: pointer;
+  user-select: none;
+  margin-inline-end: 0;
+}
+
+/* 懒加载面板（地图 / 图表 chunk 下载中）的占位 */
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+
+/* ==========================================================================
+   响应式适配（任务书 3.1：适配 PC 端和移动端浏览器）
+   --------------------------------------------------------------------------
+   目标场景：环保监测 / 农业巡查的一线人员在**户外用手机**看结果 ——
+   这不是"锦上添花的适配"，而是真实使用场景。
+
+   三档：
+     ≥1024px  桌面：左栏固定 360px + 右栏结果（原有布局，不变）
+     768-1023 平板 / 窄窗口：仍双栏，但左栏收窄到 300px
+     ≤767px   手机：单列堆叠，**对话优先**（与 UI-UX设计.md 第 7 节一致）
+   ========================================================================== */
+
+/* iOS 横竖屏切换时不要自动放大字号（否则版面会跳） */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---------------------------------------------------------------- 平板 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .panel-left {
+    width: 300px;
+    min-width: 300px;
+    padding: 12px;
+  }
+
+  .panel-right {
+    padding: 12px;
+  }
+
+  .map-container {
+    height: 320px;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+}
+
+/* ---------------------------------------------------------------- 手机 */
+@media (max-width: 767px) {
+  /* 【为什么改高度】桌面版用 100vh + 两个内部滚动区。
+     单列堆叠后如果继续锁 100vh，左栏会把右栏结果压成一条缝、或者两层滚动互相打架。
+     移动端的习惯是"整页滚动"，所以这里放开高度、让页面自己滚。 */
+  .app {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .app-body {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* 左栏＝对话与表单，放在最前面（对话优先） */
+  .panel-left {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 12px;
+    overflow-y: visible;
+  }
+
+  .panel-right {
+    padding: 12px;
+    overflow-y: visible;
+  }
+
+  /* 头部：标题与状态标签各占一行，不要挤在一起 */
+  .app-header {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 10px 12px;
+  }
+
+  .app-title {
+    font-size: 15px;
+  }
+
+  /* 头部的状态标签有 4-5 个，手机上必须允许换行 */
+  .app-header .ant-space {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .app-header .ant-tag {
+    margin-inline-end: 4px;
+  }
+
+  /* 结果区：竖向空间宝贵，卡片内边距收紧 */
+  .result-card {
+    margin-bottom: 12px;
+  }
+
+  .panel-left .ant-card-body,
+  .panel-right .ant-card-body {
+    padding: 12px;
+  }
+
+  .map-container {
+    height: 260px;
+  }
+
+  .chart-container {
+    height: 220px;
+  }
+
+  .chat-box {
+    max-height: 200px;
+  }
+
+  .chat-bubble {
+    max-width: 92%;
+    font-size: 13px;
+  }
+
+  /* 生成代码是长行等宽文本，手机上会横向撑破，必须允许断行 */
+  .code-block {
+    font-size: 11px;
+    padding: 10px;
+    max-height: 240px;
+  }
+
+  /* 日志同理：GEE 的报错信息里有很长的路径 */
+  .log-line {
+    word-break: break-all;
+  }
+
+  .panel-loading {
+    min-height: 200px;
+  }
+
+  /* 手机上触控目标太小就点不中（桌面靠 hover 反馈，触屏没有） */
+  .example-tag,
+  .region-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+  }
+
+  /* 登录卡片宽度写死 360px，在 360px 宽的屏幕上会顶到边 */
+  .auth-wrap {
+    padding: 16px;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  /* GEE 状态弹窗写死 width=640，手机上会溢出屏幕 */
+  .ant-modal {
+    max-width: calc(100vw - 24px);
+    top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .ant-modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* 偏好抽屉写死 width=380，同样会溢出 */
+  .ant-drawer-content-wrapper {
+    max-width: 100vw;
+  }
+}
+
+/* 很窄的手机（≤360px，如 iPhone SE 竖屏）：再压一档，避免文字折行过多 */
+@media (max-width: 360px) {
+  .panel-left,
+  .panel-right {
+    padding: 10px;
+  }
+
+  .map-container {
+    height: 220px;
+  }
+
+  .chart-container {
+    height: 200px;
+  }
+}
+

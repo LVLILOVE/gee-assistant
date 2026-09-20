@@ -1,0 +1,41 @@
+<Slide style={{ background: '#FFFFFF', padding: '40px 56px' }}>
+  <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 18 }}>
+    <Box style={{ width: 6, height: 32, background: '#1E4FA8' }} />
+    <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#1A2230' }}>难点、借鉴与展望</Text>
+  </Box>
+  <Box style={{ flexDirection: 'row', flex: 1, gap: 32 }}>
+    <Box style={{ flex: 3, gap: 18 }}>
+      <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#0E3F8C' }}>难点与应对</Text>
+      {[
+        { d: 'GEE 国内网络不可达', r: '可插拔后端 + 离线样例兜底' },
+        { d: '量化指标口径未定义', r: '明确判定方式与数据来源' },
+        { d: 'LLM 代码一次成功率', r: 'RAG 知识库 + 模板 + 自动调试' },
+      ].map((x, i) => (
+        <Box key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, background: '#F7F9FC', border: '1px solid #D6DCE5', borderRadius: 10, padding: '16px 20px' }}>
+          <Box style={{ width: 34, height: 34, background: '#D9534F', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' }}>{i + 1}</Text>
+          </Box>
+          <Box style={{ flex: 1, gap: 4 }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1A2230' }}>{x.d}</Text>
+            <Text style={{ fontSize: 16, color: '#4A5568' }}>应对：{x.r}</Text>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+    <Box style={{ flex: 2, gap: 18 }}>
+      <Box style={{ background: '#F0F5FC', borderRadius: 10, border: '1px solid #D6DCE5', padding: '20px 22px', gap: 12 }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0E3F8C' }}>借鉴 Earth Agent</Text>
+        {['Ask / Do 咨询执行双模式', 'Custom Instructions 偏好设置', 'Agent Profiles 助手画像', 'geeDocs 数据集知识库'].map((t, i) => (
+          <Box key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Box style={{ width: 8, height: 8, borderRadius: 4, background: '#1E4FA8' }} />
+            <Text style={{ fontSize: 16, color: '#1A2230' }}>{t}</Text>
+          </Box>
+        ))}
+      </Box>
+      <Box style={{ background: '#F7F9FC', borderRadius: 10, border: '1px solid #D6DCE5', padding: '20px 22px', gap: 10 }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0E3F8C' }}>展望 Roadmap</Text>
+        <Text style={{ fontSize: 16, color: '#4A5568', lineHeight: 1.7 }}>双模式 → 偏好设置 → 注册登录 → MCP Server → 多场景扩展（ArcGIS / 无人机 / 灾害评估）</Text>
+      </Box>
+    </Box>
+  </Box>
+</Slide>

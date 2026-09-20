@@ -1,0 +1,14 @@
+[登录] 200
+[区域] 0 个
+[提交] 200 {'task_id': '35b583b5a78a'}
+[终态] 66.4s
+  status   = succeeded
+  attempts = 2
+   · [生成] 代码来源=deepseek
+   · [执行] 第 1 次失败 [gee]：SyntaxError: invalid syntax (<gee_code>, line 140)
+   · [调试] 错误分类=gee，请求大模型修复代码
+   · [执行] 第 2 次执行成功
+   · [结论] 已生成结果摘要
+  layers = 3 | charts = 1
+  stats  = {"全年水体总面积(km2)": 429.1764946607846}
+EXIT=0

@@ -1,0 +1,14 @@
+<Slide style={{ background: '#F7F9FC' }}>
+  <Box style={{ flexDirection: 'row', flex: 1 }}>
+    <Box style={{ width: 360, background: '#1E4FA8', justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 220, fontWeight: 'bold', color: '#FFFFFF', opacity: 0.92 }}>02</Text>
+    </Box>
+    <Box style={{ flex: 1, justifyContent: 'center', padding: '0 84px', gap: 22 }}>
+      <Text style={{ fontSize: 50, fontWeight: 'bold', color: '#0E3F8C' }}>技术方案</Text>
+      <Box style={{ width: 64, height: 4, background: '#FFC107' }} />
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>系统架构：前后端分离 B/S 架构</Text>
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>核心智能体链路：意图 → 生成 → 执行 → 调试 → 可视化</Text>
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>可插拔后端：离线兜底 + 真实 GEE</Text>
+    </Box>
+  </Box>
+</Slide>

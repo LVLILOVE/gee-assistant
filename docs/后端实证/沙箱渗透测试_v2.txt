@@ -1,0 +1,15 @@
+====================================================================================
+沙箱渗透测试 v2（写入侧已改为白名单）
+====================================================================================
+  [ 已拦截  ] R1 读 .env 凭据             -> PermissionError: 沙箱安全策略禁止访问环境变量文件：.env
+  [ 已拦截  ] R2 读数据库                  -> PermissionError: 沙箱安全策略禁止访问数据库或私钥文件：app.db
+  [!! 穿透 !!] R3 读 service acct        stdout='[]'
+  [ 已拦截  ] W1 写工程目录                 -> PermissionError: 沙箱安全策略禁止写入非沙箱临时目录：C:/Users/Administrator/WorkBuddy/2026-09-15-10-21-57/gee-assi
+  [ 已拦截  ] W2 写系统目录                 -> PermissionError: 沙箱安全策略禁止写入非沙箱临时目录：C:/Windows/hacked.txt
+  [ 已拦截  ] W3 追加写 Windows           -> PermissionError: 沙箱安全策略禁止写入非沙箱临时目录：C:/Windows/win.ini
+  [ 已拦截  ] W4 io.FileIO 裸写          -> PermissionError: 沙箱安全策略禁止写入非沙箱临时目录：C:/Users/Administrator/WorkBuddy/2026-09-15-10-21-57/gee-assi
+  [ 已拦截  ] W5 os.open 写             -> PermissionError: 沙箱安全策略禁止写入非沙箱临时目录：C:/Users/Administrator/WorkBuddy/2026-09-15-10-21-57/gee-assi
+  [ 已拦截  ] W6 路径穿越写                 -> PermissionError: 沙箱安全策略禁止写入非沙箱临时目录：C:/Users/Administrator/WorkBuddy/2026-09-15-10-21-57/gee-assi
+  [ 放行 OK  ] A1 写系统 temp（应放行）         stdout='written: ok'
+
+结果：符合预期 9 / 不符合 1  共 10 项

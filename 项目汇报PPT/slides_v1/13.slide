@@ -1,0 +1,10 @@
+<Slide style={{ background: 'linear-gradient(135deg, #0E3F8C 0%, #1E4FA8 55%, #3D7BD9 100%)' }}>
+  <Box style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 }}>
+    <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#FFFFFF', letterSpacing: 10 }}>感谢聆听</Text>
+    <Text style={{ fontSize: 30, color: '#E8EFF8', letterSpacing: 4 }}>敬请指正</Text>
+    <Box style={{ width: 84, height: 4, background: '#FFC107', marginTop: 12 }} />
+    <Text style={{ fontSize: 22, color: '#C9D9F0', letterSpacing: 1, marginTop: 10 }}>
+      让遥感分析普惠每一位一线工作者
+    </Text>
+  </Box>
+</Slide>

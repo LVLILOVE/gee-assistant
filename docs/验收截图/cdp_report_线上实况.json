@@ -1,0 +1,366 @@
+{
+  "consoleErrors": [],
+  "tiles": [
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/416/211"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/416/213"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/415/212"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/416/212"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/414/213"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/418/211"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/417/212"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/415/213"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/417/213"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/414/213?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa579d45d2bc28f4d888367d31a0dd938-e7f9462e3bb6e92c348f497ea76c17"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/417/212?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa579d45d2bc28f4d888367d31a0dd938-e7f9462e3bb6e92c348f497ea76c17"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/415/212?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/417/211?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/415/213?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/416/211?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/418/213?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa579d45d2bc28f4d888367d31a0dd938-e7f9462e3bb6e92c348f497ea76c17"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/417/212?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/417/213?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/414/212?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/417/213?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa579d45d2bc28f4d888367d31a0dd938-e7f9462e3bb6e92c348f497ea76c17"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/415/211?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa579d45d2bc28f4d888367d31a0dd938-e7f9462e3bb6e92c348f497ea76c17"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/416/212?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa8373a2f7f86b33f4fe7119b08cf98a6-c6270e0dd55336e13cdcd8c1cfc238"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/417/211"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/414/212?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa579d45d2bc28f4d888367d31a0dd938-e7f9462e3bb6e92c348f497ea76c17"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/414/211"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/418/213"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/415/211"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/tile/9/415/213?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa579d45d2bc28f4d888367d31a0dd938-e7f9462e3bb6e92c348f497ea76c17"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/418/212"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8010/api/basemap/9/414/212"
+    }
+  ],
+  "apiRequests": [
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/auth/me"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/auth/me"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/auth/login"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/tasks/types"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/knowledge"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/regions"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/preferences"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/profiles"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/tasks"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/tasks/6dbe68bab17c"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/tasks/6dbe68bab17c"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8010/api/gee/status"
+    }
+  ],
+  "resources": [
+    {
+      "status": 200,
+      "mime": "text/css",
+      "url": "http://127.0.0.1:8010/assets/index-BZznWSyH.css",
+      "file": "index-BZznWSyH.css"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/index-DaUlxgAK.js",
+      "file": "index-DaUlxgAK.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/vendor-react-BJx6hX8p.js",
+      "file": "vendor-react-BJx6hX8p.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/vendor-DRVYRUvd.js",
+      "file": "vendor-DRVYRUvd.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/vendor-antd-B4KyjiK-.js",
+      "file": "vendor-antd-B4KyjiK-.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/css",
+      "url": "http://127.0.0.1:8010/assets/vendor-leaflet-CIGW-MKW.css",
+      "file": "vendor-leaflet-CIGW-MKW.css"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/MapPanel-BeecOoUs.js",
+      "file": "MapPanel-BeecOoUs.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/ChartPanel-5uSNScLE.js",
+      "file": "ChartPanel-5uSNScLE.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/vendor-leaflet-9PVWd1oM.js",
+      "file": "vendor-leaflet-9PVWd1oM.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8010/assets/vendor-echarts-BkKoXZo2.js",
+      "file": "vendor-echarts-BkKoXZo2.js"
+    }
+  ],
+  "steps": [
+    "页面已加载: http://127.0.0.1:8010/",
+    "PRE_JS: {\"ok\":true,\"log\":[\"已登录\",\"目标条目: 成功 · 2026/9/20 11:12:22 @107,641\",\"已派发点击 @107,630\"],\"mapExists\":true,\"mapSize\":[1158,380],\"leafletPanes\":21,\"geeTiles\":0,\"basemapTiles\":24,\"canvasCount\":1,\"leafletLoaded\":true,\"hasStatusBar\":false,\"bodyTextLen\":2829,\"statusLines\":[\"第 1 次失败 [gee]：SyntaxError: invalid syntax (<gee_code>, line 141)\",\"第 2 次执行成功\"],\"titleMatch\":[\"水体提取 · 洞庭湖\",\"植被指数 NDVI 计算 · 太湖流域\",\"时序变化检测 · 深圳市\",\"水体提取 · 鄱阳湖\",\"时序变化检测 · 深圳市\"]}",
+    "DOM 探针: {\"title\":\"卫星遥感影像智能分析助手\",\"bodyTextLen\":2829,\"imgTotal\":75,\"imgLoaded\":50,\"tilesLoadedByPrefix\":{\"/api/tile/\":14,\"/api/basemap/\":36},\"clipExists\":true,\"clipSize\":[1158,380],\"sample\":[{\"w\":256,\"h\":256,\"src\":\"http://127.0.0.1:8010/api/basemap/9/416/212\"},{\"w\":256,\"h\":256,\"src\":\"http://127.0.0.1:8010/api/basemap/9/416/211\"},{\"w\":256,\"h\":256,\"src\":\"http://127.0.0.1:8010/api/basemap/9/415/212\"}]}",
+    "截图: app_screenshot.png",
+    "局部截图: clip_screenshot.png {\"x\":401,\"y\":391,\"width\":1158,\"height\":380}"
+  ],
+  "browser": "Edg/151.0.4129.101",
+  "preJsResult": {
+    "ok": true,
+    "log": [
+      "已登录",
+      "目标条目: 成功 · 2026/9/20 11:12:22 @107,641",
+      "已派发点击 @107,630"
+    ],
+    "mapExists": true,
+    "mapSize": [
+      1158,
+      380
+    ],
+    "leafletPanes": 21,
+    "geeTiles": 0,
+    "basemapTiles": 24,
+    "canvasCount": 1,
+    "leafletLoaded": true,
+    "hasStatusBar": false,
+    "bodyTextLen": 2829,
+    "statusLines": [
+      "第 1 次失败 [gee]：SyntaxError: invalid syntax (<gee_code>, line 141)",
+      "第 2 次执行成功"
+    ],
+    "titleMatch": [
+      "水体提取 · 洞庭湖",
+      "植被指数 NDVI 计算 · 太湖流域",
+      "时序变化检测 · 深圳市",
+      "水体提取 · 鄱阳湖",
+      "时序变化检测 · 深圳市"
+    ]
+  },
+  "domProbe": {
+    "title": "卫星遥感影像智能分析助手",
+    "bodyTextLen": 2829,
+    "imgTotal": 75,
+    "imgLoaded": 50,
+    "tilesLoadedByPrefix": {
+      "/api/tile/": 14,
+      "/api/basemap/": 36
+    },
+    "clipExists": true,
+    "clipSize": [
+      1158,
+      380
+    ],
+    "sample": [
+      {
+        "w": 256,
+        "h": 256,
+        "src": "http://127.0.0.1:8010/api/basemap/9/416/212"
+      },
+      {
+        "w": 256,
+        "h": 256,
+        "src": "http://127.0.0.1:8010/api/basemap/9/416/211"
+      },
+      {
+        "w": 256,
+        "h": 256,
+        "src": "http://127.0.0.1:8010/api/basemap/9/415/212"
+      }
+    ]
+  },
+  "resourceSummary": {
+    "js": [
+      "index-DaUlxgAK.js",
+      "vendor-react-BJx6hX8p.js",
+      "vendor-DRVYRUvd.js",
+      "vendor-antd-B4KyjiK-.js",
+      "MapPanel-BeecOoUs.js",
+      "ChartPanel-5uSNScLE.js",
+      "vendor-leaflet-9PVWd1oM.js",
+      "vendor-echarts-BkKoXZo2.js"
+    ],
+    "css": [
+      "index-BZznWSyH.css",
+      "vendor-leaflet-CIGW-MKW.css"
+    ]
+  }
+}

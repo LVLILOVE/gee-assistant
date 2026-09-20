@@ -1,0 +1,249 @@
+{
+  "consoleErrors": [],
+  "tiles": [
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/425/208"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/427/208"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/426/208"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/425/209"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/424/209"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/426/209"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/tile/9/424/208?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa71fbb3713ef94acd7ffc7778bcee867-efd8973aa0c4a5c4c2e0b331f100f9"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/tile/9/429/209?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa71fbb3713ef94acd7ffc7778bcee867-efd8973aa0c4a5c4c2e0b331f100f9"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/428/209"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/tile/9/429/208?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa71fbb3713ef94acd7ffc7778bcee867-efd8973aa0c4a5c4c2e0b331f100f9"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/427/209"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/basemap/9/429/209"
+    },
+    {
+      "status": 200,
+      "mime": "image/png",
+      "url": "http://127.0.0.1:8012/api/tile/9/428/208?u=https%3A%2F%2Fearthengine-highvolume.googleapis.com%2Fv1%2Fprojects%2Fweixing-508708%2Fmaps%2Fa71fbb3713ef94acd7ffc7778bcee867-efd8973aa0c4a5c4c2e0b331f100f9"
+    }
+  ],
+  "apiRequests": [
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/auth/me"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/auth/me"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/auth/register"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/tasks/types"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/knowledge"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/regions"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/preferences"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/profiles"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/tasks"
+    },
+    {
+      "status": 200,
+      "mime": "application/json",
+      "url": "http://127.0.0.1:8012/api/tasks/e70b9f3440bf"
+    }
+  ],
+  "resources": [
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/index-B-TJpHEM.js",
+      "file": "index-B-TJpHEM.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/css",
+      "url": "http://127.0.0.1:8012/assets/index-Bpe7PjK9.css",
+      "file": "index-Bpe7PjK9.css"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-DRVYRUvd.js",
+      "file": "vendor-DRVYRUvd.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-react-BJx6hX8p.js",
+      "file": "vendor-react-BJx6hX8p.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-antd-B4KyjiK-.js",
+      "file": "vendor-antd-B4KyjiK-.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/css",
+      "url": "http://127.0.0.1:8012/assets/vendor-leaflet-CIGW-MKW.css",
+      "file": "vendor-leaflet-CIGW-MKW.css"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/MapPanel-BeecOoUs.js",
+      "file": "MapPanel-BeecOoUs.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/ChartPanel-5uSNScLE.js",
+      "file": "ChartPanel-5uSNScLE.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-leaflet-9PVWd1oM.js",
+      "file": "vendor-leaflet-9PVWd1oM.js"
+    },
+    {
+      "status": 200,
+      "mime": "text/javascript",
+      "url": "http://127.0.0.1:8012/assets/vendor-echarts-BkKoXZo2.js",
+      "file": "vendor-echarts-BkKoXZo2.js"
+    }
+  ],
+  "steps": [
+    "页面已加载: http://127.0.0.1:8012/",
+    "PRE_JS: {\"ok\":true,\"log\":[\"已提交注册\",\"已点击第一条任务: 植被指数 NDVI 计算 · 太湖流域 成功 · 2026/9/16 12:21:39\"],\"historyCount\":22,\"firstText\":\"植被指数 NDVI 计算 · 太湖流域 成功 · 2026/9/16 12:21:39\"}",
+    "DOM 探针: {\"title\":\"卫星遥感影像智能分析助手\",\"bodyTextLen\":1455,\"imgTotal\":24,\"imgLoaded\":13,\"tilesLoadedByPrefix\":{\"/api/tile/\":4,\"/api/basemap/\":9},\"clipExists\":true,\"clipSize\":[1158,380],\"sample\":[{\"w\":256,\"h\":256,\"src\":\"http://127.0.0.1:8012/api/basemap/9/426/208\"},{\"w\":256,\"h\":256,\"src\":\"http://127.0.0.1:8012/api/basemap/9/427/208\"},{\"w\":256,\"h\":256,\"src\":\"http://127.0.0.1:8012/api/basemap/9/426/209\"}]}",
+    "截图: app_screenshot.png",
+    "局部截图: clip_screenshot.png {\"x\":401,\"y\":181,\"width\":1158,\"height\":380}"
+  ],
+  "browser": "HeadlessChrome/153.0.8010.47",
+  "preJsResult": {
+    "ok": true,
+    "log": [
+      "已提交注册",
+      "已点击第一条任务: 植被指数 NDVI 计算 · 太湖流域 成功 · 2026/9/16 12:21:39"
+    ],
+    "historyCount": 22,
+    "firstText": "植被指数 NDVI 计算 · 太湖流域 成功 · 2026/9/16 12:21:39"
+  },
+  "domProbe": {
+    "title": "卫星遥感影像智能分析助手",
+    "bodyTextLen": 1455,
+    "imgTotal": 24,
+    "imgLoaded": 13,
+    "tilesLoadedByPrefix": {
+      "/api/tile/": 4,
+      "/api/basemap/": 9
+    },
+    "clipExists": true,
+    "clipSize": [
+      1158,
+      380
+    ],
+    "sample": [
+      {
+        "w": 256,
+        "h": 256,
+        "src": "http://127.0.0.1:8012/api/basemap/9/426/208"
+      },
+      {
+        "w": 256,
+        "h": 256,
+        "src": "http://127.0.0.1:8012/api/basemap/9/427/208"
+      },
+      {
+        "w": 256,
+        "h": 256,
+        "src": "http://127.0.0.1:8012/api/basemap/9/426/209"
+      }
+    ]
+  },
+  "resourceSummary": {
+    "js": [
+      "index-B-TJpHEM.js",
+      "vendor-DRVYRUvd.js",
+      "vendor-react-BJx6hX8p.js",
+      "vendor-antd-B4KyjiK-.js",
+      "MapPanel-BeecOoUs.js",
+      "ChartPanel-5uSNScLE.js",
+      "vendor-leaflet-9PVWd1oM.js",
+      "vendor-echarts-BkKoXZo2.js"
+    ],
+    "css": [
+      "index-Bpe7PjK9.css",
+      "vendor-leaflet-CIGW-MKW.css"
+    ]
+  }
+}

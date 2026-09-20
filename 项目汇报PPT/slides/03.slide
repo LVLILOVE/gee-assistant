@@ -1,0 +1,14 @@
+<Slide style={{ background: '#F7F9FC' }}>
+  <Box style={{ flexDirection: 'row', flex: 1 }}>
+    <Box style={{ width: 360, background: '#1E4FA8', justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 220, fontWeight: 'bold', color: '#FFFFFF', opacity: 0.92 }}>01</Text>
+    </Box>
+    <Box style={{ flex: 1, justifyContent: 'center', padding: '0 84px', gap: 22 }}>
+      <Text style={{ fontSize: 50, fontWeight: 'bold', color: '#0E3F8C' }}>项目背景与目标</Text>
+      <Box style={{ width: 64, height: 4, background: '#FFC107' }} />
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>背景问题：遥感分析门槛高，非编程用户难以上手</Text>
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>项目目标：对话式零代码完成遥感分析</Text>
+      <Text style={{ fontSize: 22, color: '#4A5568', lineHeight: 1.6 }}>量化指标：意图识别、一次成功率、调试完成率、响应时长</Text>
+    </Box>
+  </Box>
+</Slide>

@@ -1,0 +1,65 @@
+<Slide style={{ background: '#FFFFFF', padding: '36px 56px' }}>
+  <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+    <Box style={{ width: 6, height: 32, background: '#1E4FA8' }} />
+    <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#1A2230' }}>核心智能体链路</Text>
+    <Text style={{ fontSize: 16, color: '#8B97A8' }}>自然语言 → 代码 → 执行 → 自修复 → 可视化</Text>
+  </Box>
+  <Box style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <svg width={1150} height={470} viewBox='0 0 1150 470'>
+      {/* 节点 */}
+      <rect x='20' y='70' width='190' height='170' rx='10' fill='#F0F5FC' stroke='#1E4FA8' strokeWidth='2' />
+      <circle cx='115' cy='112' r='18' fill='#1E4FA8' />
+      <text x='115' y='119' textAnchor='middle' fontSize='17' fontWeight='bold' fill='#FFFFFF'>1</text>
+      <text x='115' y='158' textAnchor='middle' fontSize='18' fontWeight='bold' fill='#0E3F8C'>意图解析</text>
+      <text x='115' y='186' textAnchor='middle' fontSize='13' fill='#4A5568'>自然语言→结构化参数</text>
+      <text x='115' y='208' textAnchor='middle' fontSize='13' fill='#4A5568'>缺参多轮澄清</text>
+
+      <rect x='250' y='70' width='190' height='170' rx='10' fill='#F0F5FC' stroke='#1E4FA8' strokeWidth='2' />
+      <circle cx='345' cy='112' r='18' fill='#1E4FA8' />
+      <text x='345' y='119' textAnchor='middle' fontSize='17' fontWeight='bold' fill='#FFFFFF'>2</text>
+      <text x='345' y='158' textAnchor='middle' fontSize='18' fontWeight='bold' fill='#0E3F8C'>代码生成</text>
+      <text x='345' y='186' textAnchor='middle' fontSize='13' fill='#4A5568'>DeepSeek 生成</text>
+      <text x='345' y='208' textAnchor='middle' fontSize='13' fill='#4A5568'>GEE Python 代码</text>
+
+      <rect x='480' y='70' width='190' height='170' rx='10' fill='#F0F5FC' stroke='#1E4FA8' strokeWidth='2' />
+      <circle cx='575' cy='112' r='18' fill='#1E4FA8' />
+      <text x='575' y='119' textAnchor='middle' fontSize='17' fontWeight='bold' fill='#FFFFFF'>3</text>
+      <text x='575' y='158' textAnchor='middle' fontSize='18' fontWeight='bold' fill='#0E3F8C'>沙箱执行</text>
+      <text x='575' y='186' textAnchor='middle' fontSize='13' fill='#4A5568'>可插拔后端执行</text>
+      <text x='575' y='208' textAnchor='middle' fontSize='13' fill='#4A5568'>解析图层统计</text>
+
+      <rect x='710' y='70' width='190' height='170' rx='10' fill='#F0F5FC' stroke='#1E4FA8' strokeWidth='2' />
+      <circle cx='805' cy='112' r='18' fill='#D9534F' />
+      <text x='805' y='119' textAnchor='middle' fontSize='17' fontWeight='bold' fill='#FFFFFF'>4</text>
+      <text x='805' y='158' textAnchor='middle' fontSize='18' fontWeight='bold' fill='#0E3F8C'>自动调试</text>
+      <text x='805' y='186' textAnchor='middle' fontSize='13' fill='#4A5568'>错误分类→修复</text>
+      <text x='805' y='208' textAnchor='middle' fontSize='13' fill='#4A5568'>重试上限</text>
+
+      <rect x='940' y='70' width='190' height='170' rx='10' fill='#F0F5FC' stroke='#1E4FA8' strokeWidth='2' />
+      <circle cx='1035' cy='112' r='18' fill='#1E4FA8' />
+      <text x='1035' y='119' textAnchor='middle' fontSize='17' fontWeight='bold' fill='#FFFFFF'>5</text>
+      <text x='1035' y='158' textAnchor='middle' fontSize='18' fontWeight='bold' fill='#0E3F8C'>可视化</text>
+      <text x='1035' y='186' textAnchor='middle' fontSize='13' fill='#4A5568'>地图 + 图表</text>
+      <text x='1035' y='208' textAnchor='middle' fontSize='13' fill='#4A5568'>报告导出</text>
+
+      {/* 箭头 */}
+      <line x1='210' y1='155' x2='248' y2='155' stroke='#1E4FA8' strokeWidth='2' />
+      <polygon points='248,150 248,160 258,155' fill='#1E4FA8' />
+      <line x1='440' y1='155' x2='478' y2='155' stroke='#1E4FA8' strokeWidth='2' />
+      <polygon points='478,150 478,160 488,155' fill='#1E4FA8' />
+      <line x1='670' y1='155' x2='708' y2='155' stroke='#1E4FA8' strokeWidth='2' />
+      <polygon points='708,150 708,160 718,155' fill='#1E4FA8' />
+      <line x1='900' y1='155' x2='938' y2='155' stroke='#1E4FA8' strokeWidth='2' />
+      <polygon points='938,150 938,160 948,155' fill='#1E4FA8' />
+
+      {/* 闭环回环 */}
+      <path d='M 805 240 C 805 290, 575 290, 575 242' fill='none' stroke='#D9534F' strokeWidth='2' strokeDasharray='6,4' />
+      <polygon points='569,244 581,244 575,236' fill='#D9534F' />
+
+      {/* 底部说明 */}
+      <rect x='20' y='330' width='1110' height='90' rx='10' fill='#E8EFF8' />
+      <text x='575' y='366' textAnchor='middle' fontSize='18' fontWeight='bold' fill='#0E3F8C'>闭环设计：执行失败 → 自动调试修复 → 回到沙箱执行（步骤 3 ↔ 4）</text>
+      <text x='575' y='396' textAnchor='middle' fontSize='15' fill='#4A5568'>鉴权类错误不重试；达重试上限后输出人工修改建议，保证链路可收敛。</text>
+    </svg>
+  </Box>
+</Slide>

@@ -1,0 +1,18 @@
+[登录] status=200
+  cookie 已获取: True
+[区域] status=200 共 13 个: ['珠江三角洲', '长江三角洲', '青藏高原', '太湖流域', '黄河流域']
+[提交] status=200 body={'task_id': '8acab8a792c3'}
+  task_id = 8acab8a792c3
+[终态] 用时 42.2s
+  status   = succeeded
+  attempts = 1
+   · [生成] 代码来源=deepseek
+   · [执行] 第 1 次执行成功
+   · [结论] 已生成结果摘要
+  layers = 2
+     - NDVI 整季合成 | tile: https://earthengine-highvolume.googleapis.com/v1/projects/we
+     - 分析区域 | tile: None
+  charts = 1
+  stats  = {"整季 NDVI 均值": 0.3202, "整季 NDVI 最小值": -0.4702, "整季 NDVI 最大值": 0.9298}
+  结论   = 珠江三角洲 2024-06-01 ~ 2024-08-31 的植被指数 NDVI 计算分析已完成。关键统计：整季 NDVI 均值=0.3202；整季 NDVI 最小值=-0.4702；整季 NDVI 最大值=0.9298图表要点：逐月 NDVI 均值：NDVI 均值 共 1 项；峰值 0.320208604290386
+EXIT=0

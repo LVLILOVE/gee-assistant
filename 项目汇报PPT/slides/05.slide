@@ -1,0 +1,68 @@
+<Slide style={{ background: '#FFFFFF' }}>
+  <Box style={{ flexDirection: 'row', flex: 1 }}>
+    <Box style={{ width: 340, background: '#0E3F8C', padding: '60px 42px', gap: 22 }}>
+      <Text style={{ fontSize: 38, fontWeight: 'bold', color: '#FFFFFF', lineHeight: 1.3 }}>项目目标</Text>
+      <Box style={{ width: 56, height: 4, background: '#FFC107' }} />
+      <Text style={{ fontSize: 19, color: '#C9D9F0', lineHeight: 1.8 }}>
+        开发一款对话式卫星遥感影像智能分析 Web 应用，让用户零代码完成常见遥感分析任务。
+      </Text>
+      <Box style={{ background: '#0A2F6B', borderRadius: 8, padding: '18px 20px', marginTop: 8, gap: 8 }}>
+        <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#FFC107' }}>当前进度</Text>
+        <Text style={{ fontSize: 16, color: '#C9D9F0', lineHeight: 1.7 }}>
+          核心链路已在真实 Earth Engine 上跑通，四个量化指标均由固定评测集实测（两轮独立复现）。
+        </Text>
+      </Box>
+    </Box>
+    <Box style={{ flex: 1, padding: '44px 52px', gap: 20, justifyContent: 'center' }}>
+      <Box style={{ flexDirection: 'row', gap: 20, flex: 1 }}>
+        <Box style={{ flex: 1, background: '#F0F5FC', borderRadius: 10, padding: '22px 24px', justifyContent: 'center', gap: 7 }}>
+          <Text style={{ fontSize: 54, fontWeight: 'bold', color: '#1E4FA8' }}>≥90%</Text>
+          <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#1A2230' }}>意图识别准确率</Text>
+          <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <Box style={{ background: '#E3F3EC', borderRadius: 4, padding: '2px 9px' }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1D9E75' }}>实测 39 / 39</Text>
+            </Box>
+            <Text style={{ fontSize: 13, color: '#8B97A8' }}>3 轮 × 13 条</Text>
+          </Box>
+        </Box>
+        <Box style={{ flex: 1, background: '#F0F5FC', borderRadius: 10, padding: '22px 24px', justifyContent: 'center', gap: 7 }}>
+          <Text style={{ fontSize: 54, fontWeight: 'bold', color: '#1E4FA8' }}>≥70%</Text>
+          <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#1A2230' }}>一次成功率</Text>
+          <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <Box style={{ background: '#E3F3EC', borderRadius: 4, padding: '2px 9px' }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1D9E75' }}>实测 7~8 / 8</Text>
+            </Box>
+            <Text style={{ fontSize: 13, color: '#8B97A8' }}>两轮独立复现</Text>
+          </Box>
+        </Box>
+      </Box>
+      <Box style={{ flexDirection: 'row', gap: 20, flex: 1 }}>
+        <Box style={{ flex: 1, background: '#F0F5FC', borderRadius: 10, padding: '22px 24px', justifyContent: 'center', gap: 7 }}>
+          <Text style={{ fontSize: 54, fontWeight: 'bold', color: '#1E4FA8' }}>≥85%</Text>
+          <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#1A2230' }}>调试后完成率</Text>
+          <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <Box style={{ background: '#E3F3EC', borderRadius: 4, padding: '2px 9px' }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1D9E75' }}>实测 7~8 / 8</Text>
+            </Box>
+            <Text style={{ fontSize: 13, color: '#8B97A8' }}>两轮 · 压线达标</Text>
+          </Box>
+        </Box>
+        <Box style={{ flex: 1, background: '#F0F5FC', borderRadius: 10, padding: '22px 24px', justifyContent: 'center', gap: 7 }}>
+          <Text style={{ fontSize: 54, fontWeight: 'bold', color: '#1E4FA8' }}>≤60s</Text>
+          <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#1A2230' }}>典型任务耗时</Text>
+          <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <Box style={{ background: '#E3F3EC', borderRadius: 4, padding: '2px 9px' }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1D9E75' }}>实测 47.5~53.2s</Text>
+            </Box>
+            <Text style={{ fontSize: 13, color: '#8B97A8' }}>两轮中位数 · 8 条</Text>
+          </Box>
+        </Box>
+      </Box>
+      <Box style={{ background: '#E8EFF8', borderRadius: 8, padding: '13px 20px' }}>
+        <Text style={{ fontSize: 16, color: '#0E3F8C' }}>
+          说明：四指标均由固定评测集实测（13 条意图 + 8 条端到端），同日独立跑两轮，故按区间报数；耗时取中位数，单条最长 82s。
+        </Text>
+      </Box>
+    </Box>
+  </Box>
+</Slide>

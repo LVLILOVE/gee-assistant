@@ -1,0 +1,26 @@
+<Slide style={{ background: '#FFFFFF' }}>
+  <Box style={{ flexDirection: 'row', flex: 1 }}>
+    <Box style={{ width: 340, background: '#0E3F8C', justifyContent: 'center', padding: '60px 48px' }}>
+      <Text style={{ fontSize: 56, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 14 }}>目录</Text>
+      <Text style={{ fontSize: 20, color: '#A8C4E8', letterSpacing: 3 }}>CONTENTS</Text>
+      <Box style={{ width: 48, height: 4, background: '#FFC107', marginTop: 24 }} />
+    </Box>
+    <Box style={{ flex: 1, justifyContent: 'center', padding: '40px 70px', gap: 44 }}>
+      {[
+        { no: '01', t: '项目背景与目标', d: '背景问题 · 项目目标 · 量化指标' },
+        { no: '02', t: '技术方案', d: '系统架构 · 核心智能体链路 · 可插拔后端' },
+        { no: '03', t: '实现成果与总结', d: '功能达成 · 难点应对 · 借鉴与展望' },
+      ].map((s, i) => (
+        <Box key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 26 }}>
+          <Box style={{ width: 66, height: 66, background: '#1E4FA8', borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#FFFFFF' }}>{s.no}</Text>
+          </Box>
+          <Box style={{ gap: 6 }}>
+            <Text style={{ fontSize: 30, fontWeight: 'bold', color: '#1A2230' }}>{s.t}</Text>
+            <Text style={{ fontSize: 18, color: '#4A5568' }}>{s.d}</Text>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+</Slide>

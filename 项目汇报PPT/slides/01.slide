@@ -1,0 +1,18 @@
+<Slide style={{ background: 'linear-gradient(135deg, #0E3F8C 0%, #1E4FA8 55%, #3D7BD9 100%)' }}>
+  <Box style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: '0 90px' }}>
+    <Text style={{ fontSize: 22, color: '#A8C4E8', letterSpacing: 5, marginBottom: 22 }}>
+      SATELLITE REMOTE SENSING INTELLIGENT ANALYSIS ASSISTANT
+    </Text>
+    <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#FFFFFF', letterSpacing: 8, marginBottom: 28 }}>
+      卫星遥感影像智能分析助手
+    </Text>
+    <Box style={{ width: 84, height: 4, background: '#FFC107', marginBottom: 28 }} />
+    <Text style={{ fontSize: 28, color: '#E8EFF8', letterSpacing: 3 }}>
+      对话式 · 零代码 · 智能体完整链路
+    </Text>
+  </Box>
+  <Box style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: '0 70px 40px' }}>
+    <Text style={{ fontSize: 18, color: '#A8C4E8' }}>项目答辩汇报</Text>
+    <Text style={{ fontSize: 18, color: '#A8C4E8' }}>2026 年 9 月</Text>
+  </Box>
+</Slide>

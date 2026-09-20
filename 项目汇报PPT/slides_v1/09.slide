@@ -1,0 +1,48 @@
+<Slide style={{ background: '#FFFFFF', padding: '40px 56px' }}>
+  <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+    <Box style={{ width: 6, height: 32, background: '#1E4FA8' }} />
+    <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#1A2230' }}>关键设计：可插拔执行后端</Text>
+  </Box>
+  <Box style={{ flexDirection: 'row', flex: 1, gap: 34 }}>
+    <Box style={{ flex: 3, background: '#F7F9FC', borderRadius: 12, border: '1px solid #D6DCE5', padding: '34px 36px', gap: 20 }}>
+      <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#0E3F8C' }}>解决「GEE 国内网络不可达」这一最大风险</Text>
+      <Text style={{ fontSize: 18, color: '#4A5568', lineHeight: 1.7 }}>
+        任务书 6.3 明确指出 GEE 访问受网络环境限制。本方案把执行层抽象为可插拔后端，同一套接口挂两个实现——即使没有 GEE 账号与网络，也能跑通全链路并对外演示。
+      </Text>
+      <Box style={{ gap: 14 }}>
+        {[
+          '统一 I/O 契约 ExecutionOutcome（图层 + 图表 + 错误分类）',
+          '前端与编排层完全不感知后端差异',
+          'EXECUTION_BACKEND 环境变量一键切换 offline / gee',
+        ].map((t, i) => (
+          <Box key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Box style={{ width: 24, height: 24, background: '#1E4FA8', borderRadius: 4, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>{i + 1}</Text>
+            </Box>
+            <Text style={{ fontSize: 18, color: '#1A2230' }}>{t}</Text>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+    <Box style={{ flex: 2, gap: 20 }}>
+      <Box style={{ flex: 1, background: '#F0F5FC', borderRadius: 12, border: '2px solid #1E4FA8', padding: '24px 26px', gap: 10 }}>
+        <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Box style={{ background: '#1E4FA8', borderRadius: 6, padding: '2px 12px' }}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>已使用</Text>
+          </Box>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0E3F8C' }}>OfflineBackend</Text>
+        </Box>
+        <Text style={{ fontSize: 16, color: '#4A5568', lineHeight: 1.6 }}>内置样例数据，无需 GEE，秒级返回 NDVI 地图与统计图。</Text>
+      </Box>
+      <Box style={{ flex: 1, background: '#F7F9FC', borderRadius: 12, border: '1px solid #D6DCE5', padding: '24px 26px', gap: 10 }}>
+        <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Box style={{ background: '#8B97A8', borderRadius: 6, padding: '2px 12px' }}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>待接入</Text>
+          </Box>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1A2230' }}>GEEBackend</Text>
+        </Box>
+        <Text style={{ fontSize: 16, color: '#4A5568', lineHeight: 1.6 }}>真实调用 Earth Engine，需服务账号凭据与网络连通性验证。</Text>
+      </Box>
+    </Box>
+  </Box>
+</Slide>
