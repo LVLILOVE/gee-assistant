@@ -303,11 +303,21 @@ cd backend
       验证：`tools/test_sandbox_fs.py` 35 项（mock 与**真实凭据**两种模式都实测 ——
       后者 `ee.Number(42).add(1).getInfo()` 仍返回 43）+ `gee_doctor --self-test` 7 项。
       见 `docs/测试报告.md` 3.20 节
-- [ ] **吊销并重新生成 `DEEPSEEK_API_KEY`** —— 上一条的后续动作：`.env` 曾有**两条**匿名可读路径
-      （静态托管穿越 + 沙箱文件读取），密钥应按已泄漏处理。需到 DeepSeek 控制台操作
+- [x] **吊销并重新生成 `DEEPSEEK_API_KEY`** —— 2026-09-20 完成。上一条的后续动作：
+      `.env` 曾有**两条**匿名可读路径（静态托管穿越 + 沙箱文件读取），密钥应按已泄漏处理，
+      已到 DeepSeek 控制台轮换，并实测新 key 可用（HTTP 200 / 往返 2.0s）。
+      文档与源码中出现的密钥样例均已脱敏。
 - [ ] **沙箱改「不碰文件系统」**（更彻底）：当前是「精确放行凭据 + 其余敏感项禁读」的名单策略，
       普通源码仍可读。彻底做法是由父进程解密凭据后经 stdin 的 `request` payload 传入，
       沙箱只许读临时工作目录 —— 需要改 `gee_auth.initialize()` 的取值方式
 - [ ] 服务账号路线（对外部署用，凭据加密落盘 `data/credentials/gee.enc`；当前用个人 OAuth）。
       工具链已 44 项验通，只差在 Google Cloud Console 建账号并授予两项 IAM 角色
 - [ ] 密码找回 / 邮箱验证：注册不需要邮箱，忘记密码目前只能由管理员在库里重置
+
+## 许可证
+
+本项目采用 [MIT License](LICENSE)。
+
+未经授权，请注意：仓库中**不包含** `.env`、数据库、GEE 凭据与加密密钥，
+本地部署请参考 [`backend/.env.example`](backend/.env.example) 自行配置凭据。
+
