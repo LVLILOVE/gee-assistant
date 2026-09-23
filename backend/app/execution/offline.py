@@ -67,12 +67,16 @@ def _fc(features: list) -> dict:
     return {"type": "FeatureCollection", "features": features}
 
 
+# NDVI 分级配色：沿用遥感界通用的"红→黄→绿"植被梯度语义
+# （红=低植被、黄=过渡、绿=高植被），这一点**不能为了配色统一而改动** ——
+# 用户与文献都按这个读图，改成别的色系会造成误读。
+# 只做了一处微调：末端高值绿从 #1a9850 调向深林绿，与界面主色呼应。
 NDVI_LEGEND = [
     {"label": "< 0.2", "color": "#d73027"},
     {"label": "0.2-0.4", "color": "#fc8d59"},
     {"label": "0.4-0.6", "color": "#fee08b"},
     {"label": "0.6-0.8", "color": "#a6d96a"},
-    {"label": "> 0.8", "color": "#1a9850"},
+    {"label": "> 0.8", "color": "#2d6a4f"},
 ]
 
 
@@ -108,7 +112,7 @@ def _water(cx: float, cy: float, request: AnalysisRequest) -> ExecutionOutcome:
     ]
     water_feat = {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [blob]}, "properties": {"value": 1.0, "name": "水体"}}
     aoi = _aoi_feature(cx, cy)
-    layer = LayerData(name="水体提取结果", geojson=_fc([aoi, water_feat]), legend=[{"label": "水体", "color": "#3182bd"}])
+    layer = LayerData(name="水体提取结果", geojson=_fc([aoi, water_feat]), legend=[{"label": "水体", "color": "#2f6f9f"}])
     months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
     series = [210, 215, 220, 225, 228, 230, 235, 232, 225, 218, 212, 208]
     chart = ChartData(
@@ -130,8 +134,17 @@ def _water(cx: float, cy: float, request: AnalysisRequest) -> ExecutionOutcome:
     )
 
 
+# 地表分类配色：地物色**必须符合直觉约定**（森林绿 / 水体蓝 / 农田浅绿 /
+# 城市暖橙 / 裸地土黄），这是用户读图的第一依据，不能为了"配色统一"而改动 ——
+# 把水体画成绿色是严重的可读性事故。
+# 这里只做饱和度和明度的微调，让五色放在暖米底上不互相打架，
+# 同时保证相邻色（森林/农田）在灰度下也能区分。
 CLASS_COLORS = {
-    "森林": "#2e8b57", "水体": "#3182bd", "农田": "#c2e699", "城市": "#d95f0e", "裸地": "#e6c28a",
+    "森林": "#2d6a4f",   # 深林绿
+    "水体": "#2f6f9f",   # 水蓝（降饱和，避免与主色绿抢眼）
+    "农田": "#a8c66c",   # 耕地黄绿（比森林明显更亮更黄）
+    "城市": "#c96f2e",   # 建成区暖橙
+    "裸地": "#d9bd90",   # 裸土沙色
 }
 
 
@@ -177,7 +190,10 @@ def _change(cx: float, cy: float, request: AnalysisRequest) -> ExecutionOutcome:
     layer = LayerData(
         name="变化检测结果（红=增加，蓝=减少）",
         geojson=_fc(feats),
-        legend=[{"label": "减少", "color": "#3182bd"}, {"label": "无变化", "color": "#eeeeee"}, {"label": "增加", "color": "#d73027"}],
+        # 变化检测沿用"红增蓝减"的既有约定（与项目文档、标题文案一致）。
+        # 但注意：**红/蓝在红绿色盲眼中最难分辨**，所以标题里显式写出
+        # "红=增加，蓝=减少"，不依赖颜色单独表意。
+        legend=[{"label": "减少", "color": "#2f6f9f"}, {"label": "无变化", "color": "#e8e6de"}, {"label": "增加", "color": "#a33b2c"}],
     )
     years = _year_pairs(request)
     # 数值是合成的演示值，长度必须跟着标签走；用确定性公式而非随机数，

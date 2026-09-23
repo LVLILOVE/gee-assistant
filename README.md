@@ -28,6 +28,7 @@ gee-assistant/
 ├── frontend/           # Vite + React + AntD + Leaflet + ECharts
 │   └── src/
 │       ├── App.jsx    # 对话式输入 + 地图 + 图表 + 历史任务
+│       ├── theme.js   # 自然主题设计令牌（配色单一来源，换肤改这里）
 │       └── api.js
 └── docs/               # 交付文档
     ├── PRD.md          # 产品需求文档（借鉴 earth-agent-chrome-ext）
@@ -214,8 +215,22 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY -u all_proxy -u AL
 | `backend/tools/test_static_route.py` | 57 项 | 静态托管安全：**路径穿越**、未知接口 404、前端路由回退 |
 | `backend/tools/test_sandbox_fs.py` | 35 项 | 沙箱文件隔离 + **对抗性绕过**（`io.FileIO`/`io.open_code`/`os.stat` 等 8 条入口），正常文件仍可读 |
 | `backend/tools/test_no_stale_year.py` | 22 项 | **年代漂移守卫**：默认日期必须随当天推算，且 `app/`、`frontend/src` 里不得再出现写死的日期字面量。含 **C2 段扫描器自检**——注入探针文件验证「真的会失败」，并校验报出的行号准确 |
+| `backend/tools/test_a11y_contrast.py` | 10 项 | **无障碍对比度实测**：用无头浏览器登录真实页面，取**浏览器计算样式**算 WCAG 对比度（手算会偏乐观）。须 `:8010` 在跑 |
+| `backend/tools/test_a11y_kbd.py` | 5 项 | **无障碍键鼠核验**：键盘可达性、焦点可见性（**截图逐像素比对**）、触控目标尺寸、`prefers-reduced-motion`、图片 alt。须 `:8010` 在跑 |
 | `backend/tools/eval_metrics.py` | 4 个指标<br>+ 16 项自检 | **量化指标评测**：把任务书四个指标跑成可复现数字（`--self-test` 自检判定规则是否可信，16 项，纯离线） |
 | `backend/tools/smoke_live.sh` | 25 项 | **只读**线上冒烟（含穿越回归），这才是该对生产跑的东西 |
+| `backend/tools/_pub_e2e.py` | 6 步 | **公网端到端**：走隧道地址跑「匿名→登录→提交 NDVI→轮询终态→校验结论」。默认目标为当前 cpolar 域名，可用 `PUB_BASE=` 覆盖。**会真的建任务**，只在确认公网可用时跑 |
+
+> **改过 UI / 配色后必跑无障碍两件套**（见上方表格）。它们不读 CSS 源码，而是在真实浏览器里
+> 量最终生效的颜色与焦点环 —— 因为 antd 的色阶是运行时派生的，看源码会看漏。
+> 判焦点可见性用的是**截图差异**而非 `outline` 属性：antd 的按钮焦点环是 `box-shadow` 画的，
+> `outline` 天生为 `none`，按属性判会得出反的结论。
+> 单独跑：`bash tools/regress_all.sh --with-a11y`（不带这个开关时自动跳过，不会因服务没起而报红）。
+
+> **`_pub_e2e.py` 里的两个坑**（都是我自己踩过并已修正的，改脚本时别退回去）：
+> ① `conclusion` 是**纯字符串**不是 dict（见 `app/models.py:66`），
+> 写着 `res["conclusion"]["text"]` 会拿到 `None` 并**误报"结论为空"**；
+> ② 会话必须靠 `/api/auth/me` 确认 —— `/api/auth/login` 的响应里**没有** `authenticated` 字段。
 
 > 另外 `tools/gee_doctor.py --self-test` 有 7 项链路自检（模块黑名单未误伤 / 子进程封禁 /
 > 网络白名单 / **敏感文件禁读** / 超时）。**改沙箱后必须跑它** —— 沙箱按「能力」封禁，

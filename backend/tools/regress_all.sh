@@ -11,8 +11,12 @@
 #   bash tools/regress_all.sh                 # 跑 6 个逻辑层套件（默认，约几分钟）
 #   bash tools/regress_all.sh --only isolation   # 只跑名字含 isolation 的
 #   bash tools/regress_all.sh --with-doctor    # 额外跑 gee_doctor --self-test（沙箱链路）
+#   bash tools/regress_all.sh --with-a11y      # 额外跑无障碍套件（需 :8010 在跑）
 #   bash tools/regress_all.sh --http           # ⚠️ 额外跑 3 个 HTTP 套件（很慢，见下）
 #   bash tools/regress_all.sh --help
+#
+# ⚠️ 关于 --with-a11y：需要后端实例在 :8010 跑着（脚本会先探活，没起就跳过）。
+#    它用无头 Edge 登录页面，实测对比度与焦点可见性。改过 UI/配色后**必跑**。
 #
 # ⚠️ 关于 --http：3 个 HTTP 套件会**自起临时实例**（:8014 / :8015 等）并自造临时库，
 #    不碰线上 data/app.db，所以是安全的；但它们**很慢** ——
@@ -51,6 +55,13 @@ SUITES=(
 DOCTOR_SUITES=(
     demo_doctor.py
 )
+# 无障碍套件要**真服务在跑**（它们用无头浏览器登录线上实例取真实计算样式）。
+# 所以不能进默认清单 —— 回归可能在服务没起时跑，那样会全红，久了就没人看。
+# 用 --with-a11y 显式开启，且服务不在跑时给明确提示而不是一堆报错。
+A11Y_SUITES=(
+    test_a11y_contrast.py
+    test_a11y_kbd.py
+)
 HTTP_SUITES=(
     test_auth_http.sh
     test_isolation_http.sh
@@ -59,11 +70,13 @@ HTTP_SUITES=(
 
 WITH_DOCTOR=0
 WITH_HTTP=0
+WITH_A11Y=0
 ONLY=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --with-doctor) WITH_DOCTOR=1 ;;
+        --with-a11y)   WITH_A11Y=1 ;;
         --http)        WITH_HTTP=1 ;;
         --only)        shift; ONLY="${1:-}" ;;
         --timeout)     shift; PER_TIMEOUT="${1:-900}" ;;
@@ -87,11 +100,50 @@ if [ "$WITH_DOCTOR" = "1" ]; then
     SUITES+=("${DOCTOR_SUITES[@]}")
 fi
 
+# 无障碍套件需要线上实例在跑。先探活，没起就明确告知并跳过 ——
+# 让整轮回归因为"服务没起"而变红，会训练出"红了也照过"的坏习惯。
+#
+# ⚠️ 探活的写法有坑，别改成 `curl -o /dev/null` + 看退出码：
+#    本机（git-bash + 删除钩子）`-o /dev/null` 会返回 **退出码 23**
+#    （写 /dev/null 被拦），于是 `if curl ...; then` 恒判失败 ——
+#    明明服务健康（HTTP 200、netstat 显示 LISTENING），却被当成"没起"跳过。
+#    所以这里**用 -w 取状态码**来判定，不依赖退出码、也不写文件。
+#    （这坑很值钱：它会把"我检查过了"变成"我跳过了却以为检查过了"。）
+_a11y_probe() {
+    code="$(curl -s --noproxy '*' --max-time 5 -w '%{http_code}' \
+            -o /dev/null "http://127.0.0.1:8010/health" 2>/dev/null)"
+    [ "$code" = "200" ]
+}
+if [ "$WITH_A11Y" = "1" ]; then
+    if _a11y_probe; then
+        SUITES+=("${A11Y_SUITES[@]}")
+    else
+        echo "⚠️  --with-a11y 已指定，但 http://127.0.0.1:8010/health 不通 —— 跳过无障碍套件"
+        echo "    （无障碍检查要用无头浏览器登录真实页面取计算样式，必须有实例在跑）"
+        echo
+        SKIPPED_LIST+=("${A11Y_SUITES[@]}")
+    fi
+fi
+
 # `--only <子串>` 时，若目标只存在于需要开关才加载的清单里（如 demo_doctor 在
 # DOCTOR_SUITES），上面那批没进来，过滤后会变成空清单、跑 0 个套件却报"0 失败"——
 # 典型的假绿。这里显式把命中的套件补进清单，让 --only 始终能定位到目标。
+# ---------------------------------------------------------------------------
+# 无障碍套件（test_a11y_*.py）的特殊之处，改它们前先读：
+#   · 需要在跑的服务：用无头 Edge 登录 :8010，从**浏览器计算样式**里读颜色，
+#     再按 WCAG 公式算对比度 —— 因为手算会偏乐观（本项目的 ink-500 就是
+#     手算以为 4.6:1、实测只有 4.24:1）。
+#   · 焦点可见性用**截图逐像素比对**，不是读 outline 属性。两个原因：
+#     ① antd 用 cssinjs 运行时注入 <style>，优先级在构建产物里查不到；
+#     ② 按钮的焦点环其实是 box-shadow，outline 天生是 none，按属性判会误判。
+#   · 排查这类脚本时最容易踩的两个坑（都已写进脚本注释）：
+#     ✔ `document.body.focus()` **不能**清除焦点（body 不可聚焦，是个 no-op），
+#       参照图里焦点环还在 → 差异恒为 0 → 把有环的元素全误报成无环。
+#       必须用 `document.activeElement.blur()`。
+#     ✔ 截图坐标要乘 devicePixelRatio（本机 125% 缩放），否则裁剪框错位。
+# ---------------------------------------------------------------------------
 if [ -n "$ONLY" ]; then
-    for cand in "${DOCTOR_SUITES[@]}" "${HTTP_SUITES[@]}"; do
+    for cand in "${DOCTOR_SUITES[@]}" "${HTTP_SUITES[@]}" "${A11Y_SUITES[@]}"; do
         case "$cand" in *"$ONLY"*)
             already=0
             for s in "${SUITES[@]}"; do [ "$s" = "$cand" ] && already=1; done

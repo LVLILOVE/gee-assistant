@@ -1,3 +1,58 @@
+/* ==========================================================================
+   自然主题（Nature Theme）· 设计令牌
+   --------------------------------------------------------------------------
+   色彩语义见 src/theme.js 的注释（含全部对比度实测值）。
+   这里把同一套令牌导出为 CSS 变量，供本文件以及 Leaflet/自定义组件复用 ——
+   antd 组件的颜色由 ConfigProvider 接管，CSS 变量只管我们自己的 DOM。
+
+   全部对比度已在**真实浏览器里实测**通过 WCAG AA（正文 4.5:1 / 大字 3:1）。
+   最紧的一处是 4.91:1（结论免责声明），其余 5.2~13.9:1。
+   注意：数值必须来自浏览器实测，手算容易偏乐观 —— 初版 ink-500 就是
+   手算以为 4.6:1，实测只有 4.24:1，未过线。校验脚本见 tools/_a11y_contrast.py。
+   ========================================================================== */
+:root {
+  --moss-900: #0f2e21;
+  --moss-800: #1b4d38;
+  --moss-700: #235c43;
+  --moss-600: #2d6a4f;
+  --moss-500: #40916c;
+  --moss-400: #74c69d;
+  --moss-200: #b7dcc7;
+  --moss-100: #e7f0e9;
+  --moss-50: #f2f8f4;
+
+  --bark: #6b4f3a;
+  --clay: #a33b2c;
+  --amber: #b7950b;
+  --sand: #d4a574;
+  --sand-100: #f5ece0;
+
+  --ink-900: #2b2b28;
+  --ink-700: #5c5c58;
+  /* ink-500 由浏览器实测校准：初版 #7a7a75 仅 4.24:1，未达 AA。
+     #6b6b66 实测 4.91~5.26:1，三处底色均通过。 */
+  --ink-500: #6b6b66;
+  --ink-300: #b8b6ae;
+  --line: #e2e0d8;
+  --paper: #fdfdfb;
+  --canvas: #f6f5f0;
+
+  --status-ok: #3f7d44;
+  --status-warn: #b7791f;
+  --status-err: #a33b2c;
+
+  /* 间距与节奏（8px 基准，与 theme.js 的 borderRadius 同语言） */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* 动效：统一时长与缓动，避免一处 0.2s 一处 0.3s 的杂乱感。
+     全部动效均可被 prefers-reduced-motion 关闭（见文件末尾）。 */
+  --dur-fast: 150ms;
+  --dur-normal: 300ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -8,7 +63,8 @@ body,
   margin: 0;
   height: 100%;
   font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
-  background: #f0f2f5;
+  background: var(--canvas);
+  color: var(--ink-900);
 }
 
 .app {
@@ -17,18 +73,36 @@ body,
   height: 100vh;
 }
 
+/* 顶栏：用主色做一条极细的顶边，代替大块色块 ——
+   既点明"这是本产品的品牌色"，又不占视觉重量。 */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 2px 0 0 var(--moss-600);
 }
 
 .app-title {
   font-size: 16px;
   font-weight: 600;
+  color: var(--moss-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 标题前的叶片标记：纯 CSS 画的，不引图片（省一次请求，也能跟着主色变） */
+.app-title::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 50% 0 50% 50%;
+  background: linear-gradient(135deg, var(--moss-500), var(--moss-700));
+  transform: rotate(-45deg);
 }
 
 .app-body {
@@ -40,8 +114,8 @@ body,
 .panel-left {
   width: 360px;
   min-width: 360px;
-  border-right: 1px solid #e8e8e8;
-  background: #fff;
+  border-right: 1px solid var(--line);
+  background: var(--paper);
   overflow-y: auto;
   padding: 16px;
 }
@@ -50,7 +124,7 @@ body,
   flex: 1;
   padding: 16px;
   overflow-y: auto;
-  background: #f0f2f5;
+  background: var(--canvas);
 }
 
 .result-card {
@@ -58,63 +132,76 @@ body,
 }
 
 /* 结论摘要卡片：左侧色条区分"这是解读"而非"这是原始数据"，
-   让它在视觉上先于地图/图表被读到。 */
+   让它在视觉上先于地图/图表被读到。
+   半透明底 + 主色左条 = 一眼看出"这段是结论"，但仍属卡片族，不喧宾夺主。 */
 .conclusion-card {
-  border-left: 3px solid #1677ff;
+  border-left: 3px solid var(--moss-600);
+  background: linear-gradient(to right, var(--moss-50), var(--paper) 90px);
+}
+
+.conclusion-card .ant-card-head-title {
+  color: var(--moss-800);
 }
 
 .conclusion-text {
   font-size: 14px;
   line-height: 1.8;
-  color: #1f1f1f;
+  color: var(--ink-900);
 }
 
 .conclusion-note {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px dashed #e8e8e8;
+  border-top: 1px dashed var(--line);
   font-size: 12px;
-  color: #999;
+  color: var(--ink-500);
   line-height: 1.6;
 }
 
 .map-container {
   height: 380px;
   width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: #dfe6ec;
+  /* 底图未加载完时的底色：取浅苔绿而非原来的冷灰蓝，
+     与整体配色一致；同时仍能和"确实加载失败"的空白区分开。 */
+  background: var(--moss-100);
 }
 
 /* 瓦片无法代理时的显式提示：宁可说清楚，也不要地图静默空白 */
 .map-warn {
   margin-top: 8px;
   padding: 8px 12px;
-  border: 1px solid #ffd591;
-  border-radius: 6px;
-  background: #fffbe6;
-  color: #874d00;
+  border: 1px solid #e6cd8f;
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius-sm);
+  background: #fdf6e3;
+  color: #6b4a0d;
   font-size: 12px;
   line-height: 1.6;
 }
 
-/* 登录 / 注册门 */
+/* 登录 / 注册门：给一个与主题呼应的柔和背景，而不是纯灰平面 */
 .auth-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background: #f0f2f5;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(64, 145, 108, 0.1), transparent 42%),
+    radial-gradient(circle at 82% 78%, rgba(183, 149, 11, 0.08), transparent 45%),
+    var(--canvas);
 }
 
 .auth-card {
   width: 360px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(43, 43, 40, 0.08);
+  border-top: 3px solid var(--moss-600);
 }
 
 .auth-hint {
   margin: 12px 0 0;
-  color: #8c8c8c;
+  color: var(--ink-700);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -127,15 +214,17 @@ body,
 .log-line {
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12px;
-  color: #666;
+  color: var(--ink-700);
 }
 
+/* 代码块：深底保留（等宽长文本在深底上更易读、也符合"这是机器产物"的语义），
+   但把纯黑板换成带绿调的墨色，与整体配色呼应。 */
 .code-block {
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12px;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  border-radius: 6px;
+  background: var(--moss-900);
+  color: #d7e5dc;
+  border-radius: var(--radius-md);
   padding: 12px;
   white-space: pre-wrap;
   max-height: 300px;
@@ -154,7 +243,7 @@ body,
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #555;
+  color: var(--ink-700);
 }
 
 .legend-swatch {
@@ -162,6 +251,8 @@ body,
   height: 12px;
   border-radius: 2px;
   display: inline-block;
+  /* 浅色图例（如"无变化"用的近白色）在白底上看不见，加一道细边兜底 */
+  box-shadow: inset 0 0 0 1px rgba(43, 43, 40, 0.18);
 }
 
 .chat-box {
@@ -175,11 +266,12 @@ body,
 
 .chat-hint {
   font-size: 12px;
-  color: #999;
+  color: var(--ink-700);
   line-height: 1.6;
-  padding: 6px 8px;
-  background: #fafafa;
-  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--moss-50);
+  border-left: 2px solid var(--moss-200);
+  border-radius: var(--radius-sm);
 }
 
 .example-prompts {
@@ -194,18 +286,22 @@ body,
   user-select: none;
   font-size: 12px;
   margin-inline-end: 0;
+  transition: background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
 }
 
 .example-tag:hover {
-  opacity: 0.75;
+  opacity: 1;
+  background: var(--moss-100);
+  border-color: var(--moss-400);
 }
 
 .kb-item {
   padding: 8px;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   margin-bottom: 6px;
-  background: #fafafa;
+  background: var(--moss-50);
 }
 
 .kb-item-head {
@@ -222,7 +318,7 @@ body,
 
 .kb-item-eeid {
   font-size: 11px;
-  color: #1677ff;
+  color: var(--moss-700);
   font-family: 'Consolas', monospace;
   margin: 2px 0;
   word-break: break-all;
@@ -230,7 +326,7 @@ body,
 
 .kb-item-desc {
   font-size: 12px;
-  color: #888;
+  color: var(--ink-700);
   line-height: 1.5;
 }
 
@@ -256,14 +352,15 @@ body,
 }
 
 .chat-msg.user .chat-bubble {
-  background: #1677ff;
+  background: var(--moss-600);
   color: #fff;
   border-bottom-right-radius: 2px;
 }
 
 .chat-msg.assistant .chat-bubble {
-  background: #f0f2f5;
-  color: #333;
+  background: var(--moss-50);
+  color: var(--ink-900);
+  border: 1px solid var(--moss-100);
   border-bottom-left-radius: 2px;
 }
 
@@ -275,9 +372,80 @@ body,
   gap: 4px;
 }
 
+/* 状态标签：实色底 + 白字。
+   antd 的预设色名（green/red/blue）会渲染成浅底浅字，实测仅 3.37:1，未达 AA。
+   这里统一改成实色底 —— 白字在深色底上天然达标，且不依赖色相也能靠文字读懂。 */
+.app-header .ant-tag,
+.ant-tag[class*='ant-tag-'] {
+  font-weight: 500;
+}
+
+/* 顶栏里"执行后端"那个中性标签：浅底 + 深字，单独保证对比度 */
+.app-header .ant-tag[style*='var(--canvas)'] {
+  color: var(--ink-700);
+}
+
+/* ==========================================================================
+   焦点可见性（无障碍硬要求）
+   --------------------------------------------------------------------------
+   浏览器实测发现：可点击的 Tag 与 Segmented 选项**完全没有焦点指示** ——
+   antd 默认给它们设了 outline:none，而这两个恰恰是键盘用户最常操作的元素
+   （区域快捷标签、Ask/Do 模式切换）。键盘用户会完全"看不见自己在哪"。
+
+   这里统一补一个高对比焦点环。用 :focus-visible 而不是 :focus ——
+   前者只在键盘操作时出现，鼠标点击不会留下难看的框（体验更好，也不会被
+   开发者为了美观而再次删掉）。
+   ========================================================================== */
+.example-tag:focus-visible,
+.region-tag:focus-visible,
+.ant-tag:focus-visible,
+.ant-segmented-item:focus-visible,
+.ant-segmented-item-input:focus-visible + .ant-segmented-item-label {
+  outline: 2px solid var(--moss-600);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Segmented 的选中项底是深绿，深绿焦点环会糊在一起 —— 选中态改用白环 */
+.ant-segmented-item-selected:focus-visible .ant-segmented-item-label,
+.ant-segmented-item-selected:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: -4px;
+}
+
+/* antd 折叠面板与抽屉标题也可聚焦，一并保证可见 */
+.ant-collapse-header:focus-visible,
+.ant-drawer-close:focus-visible,
+.ant-modal-close:focus-visible,
+.ant-btn:focus-visible,
+.ant-input:focus-visible {
+  outline: 2px solid var(--moss-600);
+  outline-offset: 2px;
+}
+
+/* 移动端触控目标：标签与分段控件高度提到 28px，保证在晃动的手上也能点中。
+   44px 是理想值，但顶栏状态标签排布密集，真的做到 44px 会占掉半屏 ——
+   用更大的水平内边距补偿，这一取舍已在注释中说明。 */
+@media (max-width: 767px) {
+  .app-header .ant-tag {
+    min-height: 26px;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+
+  .ant-segmented-item-label {
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    padding-inline: 12px;
+  }
+}
+
 .region-tags-label {
   font-size: 12px;
-  color: #999;
+  color: var(--ink-500);
   margin-right: 2px;
 }
 
@@ -285,6 +453,11 @@ body,
   cursor: pointer;
   user-select: none;
   margin-inline-end: 0;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.region-tag:hover {
+  background: var(--moss-100);
 }
 
 /* 懒加载面板（地图 / 图表 chunk 下载中）的占位 */
@@ -293,6 +466,39 @@ body,
   align-items: center;
   justify-content: center;
   min-height: 320px;
+}
+
+/* 结果区空状态：原实现是一行灰字居中，看着像"坏了"。
+   改成带图示的引导，明确下一步该做什么。 */
+.empty-state {
+  text-align: center;
+  padding: 56px 24px;
+  color: var(--ink-700);
+}
+
+.empty-state-mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50% 0 50% 50%;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, var(--moss-200), var(--moss-400));
+  opacity: 0.85;
+}
+
+.empty-state-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-900);
+  margin-bottom: 6px;
+}
+
+.empty-state-desc {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-500);
+  max-width: 320px;
+  margin: 0 auto;
 }
 
 /* ==========================================================================
@@ -310,6 +516,14 @@ body,
 /* iOS 横竖屏切换时不要自动放大字号（否则版面会跳） */
 html {
   -webkit-text-size-adjust: 100%;
+}
+
+/* 触控设备上:hover 会"粘住"（点完仍保持悬停态），关掉它避免状态错乱 */
+@media (hover: none) {
+  .example-tag:hover,
+  .region-tag:hover {
+    background: inherit;
+  }
 }
 
 /* ---------------------------------------------------------------- 平板 */
@@ -354,7 +568,7 @@ html {
     width: 100%;
     min-width: 0;
     border-right: none;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid var(--line);
     padding: 12px;
     overflow-y: visible;
   }
@@ -428,12 +642,19 @@ html {
     min-height: 200px;
   }
 
-  /* 手机上触控目标太小就点不中（桌面靠 hover 反馈，触屏没有） */
+  .empty-state {
+    padding: 36px 16px;
+  }
+
+  /* 手机上触控目标太小就点不中（桌面靠 hover 反馈，触屏没有）。
+     26px 是折中值：44px 是理想值，但这里标签密集排布，
+     真的做到 44px 会让"常用区域"占掉半屏 —— 用更大的内边距补偿。 */
   .example-tag,
   .region-tag {
     display: inline-flex;
     align-items: center;
-    min-height: 26px;
+    min-height: 28px;
+    padding-inline: 10px;
   }
 
   /* 登录卡片宽度写死 360px，在 360px 宽的屏幕上会顶到边 */
@@ -480,6 +701,23 @@ html {
 
   .chart-container {
     height: 200px;
+  }
+}
+
+/* ==========================================================================
+   无障碍：尊重系统的"减少动态效果"设置
+   --------------------------------------------------------------------------
+   前庭功能障碍用户会因动效产生眩晕/恶心。这不是可选项 —— 所有动效一律关闭，
+   但**保留状态变化本身**（颜色仍会变，只是不再有过渡过程）。
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

@@ -82,3 +82,13 @@ backend/logs/
 .build_tmp_*/
 frontend/dist.bak_*/
 *.bak_*
+
+# 构建中转目录（主题/换肤等一次性构建用，Vite 默认 outDir 在工程外）
+.build_*/
+# UI 截图输出目录（换肤前后对比图，几 MB，与仓库无关）
+.ui_shot/
+.ui_after/
+.ui_final/
+# 无障碍核验的临时截图（聚焦前后对比，每次运行都重建）
+.focus_probe/
+.isolate/
