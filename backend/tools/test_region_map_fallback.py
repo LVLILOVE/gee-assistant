@@ -256,9 +256,24 @@ _MUST_RESOLVE = [
     "太湖流域", "深圳", "苏州", "南京", "六盘水市", "神农架", "张家界",
     "稻城亚丁", "可可西里", "三江源", "青海湖", "长白山", "武夷山",
     "西双版纳", "香格里拉", "阿尔山", "额济纳", "崆峒山", "云台山",
+    # 2026-09-24 覆盖率探针实测出的缺口，已补齐
+    "泸沽湖", "民勤县", "塔里木河",
 ]
 _unresolved = [n for n in _MUST_RESOLVE if get_region(n) is None]
 check("曾在 bug 里出现/易错的地名全部可解析", not _unresolved, _unresolved)
+
+# --- 2026-09-24 补的 3 条：正式名与别名都要能查到 ---
+# 为什么要单独断言别名：这 3 条正是"用户这么问却定位不了"的缺口，
+# 而用户问的写法往往带后缀（「泸沽湖景区」「塔里木河流域」「民勤」）。
+for _alias in ("泸沽湖", "泸沽湖景区", "民勤", "民勤县",
+               "塔里木河", "塔里木河流域", "塔里木河干流"):
+    check(f"新增条目别名可解析：{_alias}", get_region(_alias) is not None)
+check("塔里木河 不得被 塔里木盆地 抢走",
+      (get_region("塔里木河流域") or {}).get("name") == "塔里木河",
+      (get_region("塔里木河流域") or {}).get("name"))
+check("塔里木河 的范围小于塔里木盆地（河≠盆地）",
+      get_half("塔里木河") < get_half("塔里木盆地"),
+      f"{get_half('塔里木河')} vs {get_half('塔里木盆地')}")
 
 # --- 库外名称必须**明确返回 None**，不能猜一个坐标 ---
 # ⚠ 选例子要挑**真的不在任何表里**的 —— 坐标簿收录了 470+ 条省市县，
@@ -537,6 +552,81 @@ try:
 except Exception as e:  # noqa: BLE001
     import traceback
     check("端到端 mock 链路", False, f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}")
+
+print("\nH. AOI 守卫（生成代码的分析范围校正）")
+
+# 背景：提示词里同时有两条关于 AOI 的指令 ——
+#   ① 「逐字使用上面注入的矩形」（来自内置区域库，按区域类型给 half）
+#   ② 「AOI 必须 ≤0.5°×0.5°」（_RESOURCE_RULES 的资源硬约束）
+# 对省域/大流域这两条**互相矛盾**。2026-09-24 随机自检实测：5 个任务里
+# 「广州市」把注入的 0.70° 缩成 0.50°（正好是②的上限），中心没变、范围偏小。
+# 修法分两半：先把提示词的矛盾讲清楚，再用这道守卫兜住模型的偏离。
+
+from app.codegen import _RESOURCE_RULES, _build_prompt, enforce_aoi  # noqa: E402
+
+# --- 复现实测的那次偏离 ---
+_gz_bad = "import ee\naoi = ee.Geometry.Rectangle([113.0100, 22.8800, 113.5100, 23.3800])\n"
+_gz_fixed, _gz_note = enforce_aoi(_gz_bad, "广州市")
+check("广州：被模型缩小的 AOI 被校正回 0.70°",
+      "112.9100, 22.7800, 113.6100, 23.4800" in _gz_fixed, _gz_fixed)
+check("校正不是静默的（给出了可读说明）", "校正" in _gz_note, _gz_note)
+
+_gz_ok = "aoi = ee.Geometry.Rectangle([112.9100, 22.7800, 113.6100, 23.4800])\n"
+check("已合规的代码一个字都不改", enforce_aoi(_gz_ok, "广州市") == (_gz_ok, ""))
+
+# --- 中心跑偏 = "分析到别处"那一类 bug，必须无条件拽回（守卫的主要价值）---
+_shift = "aoi = ee.Geometry.Rectangle([109.28, 30.08, 109.68, 30.48])\n"
+_sh_fixed, _sh_note = enforce_aoi(_shift, "梅里雪山")
+check("中心被挪到 1000km 外：拽回本区域",
+      "98.4500, 28.2500, 98.8500, 28.6500" in _sh_fixed, _sh_fixed)
+check("中心跑偏的说明里报了公里数", "km" in _sh_note, _sh_note)
+
+# --- allow_shrink：超时/内存超限时缩小 AOI 是**合法缓解**，不能一律拽回 ---
+# 否则省域任务超时后会把 2.6° 强行恢复，再超时一次，永远收敛不了。
+_smaller = "aoi = ee.Geometry.Rectangle([98.5500, 28.3500, 98.7500, 28.5500])\n"
+check("allow_shrink=True 放行「围绕原中心」的缩小",
+      enforce_aoi(_smaller, "梅里雪山", allow_shrink=True) == (_smaller, ""))
+check("allow_shrink=False 时同样的缩小会被还原",
+      "98.4500, 28.2500, 98.8500, 28.6500" in enforce_aoi(_smaller, "梅里雪山")[0])
+_bigger = "aoi = ee.Geometry.Rectangle([97.65, 27.45, 99.65, 29.45])\n"
+check("即使 allow_shrink=True 也不许放大（放大只会更慢）",
+      "98.4500, 28.2500, 98.8500, 28.6500"
+      in enforce_aoi(_bigger, "梅里雪山", allow_shrink=True)[0])
+
+# --- 不确定时**不乱动**，这比"改错"安全 ---
+_runtime = "aoi = WB.resolve_region_bbox()\n"
+check("运行时解析的写法不碰", enforce_aoi(_runtime, "广州市") == (_runtime, ""))
+_unknown = "aoi = ee.Geometry.Rectangle([1.0, 2.0, 3.0, 4.0])\n"
+check("库外地名不猜、也不改", enforce_aoi(_unknown, "瓦坎达") == (_unknown, ""))
+_extra = "aoi = ee.Geometry.Rectangle([113.01, 22.88, 113.51, 23.38], None, False)\n"
+check("带额外参数时只替换四个数、尾部保留",
+      enforce_aoi(_extra, "广州市")[0].endswith(", None, False)\n"))
+_multi = "aoi = ee.Geometry.Rectangle([\n    113.01,\n    22.88,\n    113.51,\n    23.38])\n"
+check("跨行写法也能校正",
+      "112.9100, 22.7800, 113.6100, 23.4800" in enforce_aoi(_multi, "广州市")[0])
+
+# --- 守卫不得变成「一律压到 0.5°」：省域本来就该是 2.6° ---
+_sx = "aoi = ee.Geometry.Rectangle([111.00, 36.30, 113.60, 38.90])\n"
+check("省域 2.6° 视为合规（守卫生效的前提是注入值本身对）",
+      enforce_aoi(_sx, "山西省") == (_sx, ""))
+
+# --- 提示词本身不能再自相矛盾，否则守卫只是事后补救 ---
+check("资源规则已说明 0.5° 上限不适用于已注入的范围",
+      ("不适用于" in _RESOURCE_RULES) and ("没有给出" in _RESOURCE_RULES))
+try:
+    _p_sx = _build_prompt(AnalysisRequest(
+        task_type=TaskType.ndvi, region="山西省",
+        start_date="2025-03-01", end_date="2025-05-31", cloud_threshold=30))
+    check("注入省域 2.6° 的同时明确要求「照抄、别缩」",
+          ("2.60°×2.60°" in _p_sx) and ("照抄" in _p_sx))
+except Exception as _e:  # noqa: BLE001
+    check("注入省域范围并提示照抄", False, f"{type(_e).__name__}: {_e}")
+
+# --- orchestrator 必须真的调用了守卫，否则守卫只是一段没人用的代码 ---
+_orch = (BACKEND / "app" / "orchestrator.py").read_text(encoding="utf-8")
+check("生成路径调用了 enforce_aoi", "enforce_aoi" in _orch)
+check("修复路径按错误类型决定 allow_shrink（超时/内存才放行缩小）",
+      "allow_shrink" in _orch and '"timeout"' in _orch and "memory" in _orch)
 
 print("\n结果：%d/%d 通过" % (sum(ok), len(ok)))
 sys.exit(0 if all(ok) else 1)

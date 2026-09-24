@@ -1,3 +1,6 @@
+import math
+import re
+
 from .config import settings
 from .daterange import default_end, default_start
 from .debugger import summarize_error
@@ -15,7 +18,14 @@ SYSTEM_PROMPT = (
 # 比事后让大模型"自己修"可靠得多。
 _RESOURCE_RULES = (
     "【资源预算｜硬约束，违反会导致 Earth Engine 报 User memory limit exceeded 或执行超时】\n"
-    "a. AOI 必须控制在 0.5°×0.5° 以内（约 50km×50km），以给定中心坐标为准向外展开，禁止跨省大范围框选。\n"
+    "a. AOI：**若上面已给出矩形范围，就严格照抄那个范围**（中心与尺寸都别动），"
+    "本条的 0.5° 上限**不适用于**已注入的范围。\n"
+    "   ⚠ 只有在**完全没有给出**矩形范围时，才适用 0.5°×0.5°（约 50km×50km）的上限，"
+    "以给定中心向外展开，禁止跨省大范围框选。\n"
+    "   ⚠ 内置区域库给省域/大流域的范围**本来就大于 0.5°**（如省域 2.6°），那是有意为之——"
+    "统计要有代表性。按 0.5° 裁掉会让「山西省植被」只统计到省会周边一小块，与用户所问不符。\n"
+    "   实测教训（2026-09-24）：提示词同时给了注入范围 0.70° 和本条的 0.5° 上限，"
+    "模型自行折中成 0.50°，中心没变但**分析范围被缩小**——即本条与注入范围冲突时的错误解法。\n"
     "b. 禁止对全域调用 .reproject()；如需降采样，直接把 scale 写大（>=250）即可。\n"
     "c. reduceRegion 必须带 bestEffort=True、tileScale=16、scale>=250、maxPixels=1e9。\n"
     "d. 控制数据量只能【在时间分组内部】做：逐月合成时每月取 .sort('CLOUDY_PIXEL_PERCENTAGE').limit(4)；"
@@ -187,7 +197,8 @@ def _build_prompt(req: AnalysisRequest, user_id: int | None = None) -> str:
         "要求：\n"
         "1. 只输出 Python 代码本身，不要任何解释文字，不要 markdown 代码块围栏。\n"
         "2. 第一行 import ee（ee 已由沙箱预初始化，无需再调用 ee.Initialize()）。\n"
-        "3. 用 ee.Geometry.Rectangle 或 ee.Geometry.Polygon 定义 AOI（用上面给的坐标）。\n"
+        "3. 用 ee.Geometry.Rectangle 定义 AOI，并**逐字使用上面给出的那个矩形范围**"
+        "（四个数照抄：不要自己改尺寸、不要为了「节省资源」缩到 0.5°、不要只取中心点）。\n"
         "4. 使用 Sentinel-2 或 Landsat 数据，按云量阈值筛选。\n"
         "5. 计算并 print 关键统计结果。\n"
         "6. 必须用 WB 报告器上报可视化结果，否则前端拿不到地图与图表：\n"
@@ -340,6 +351,97 @@ def _strip_fence(code: str) -> str:
     return code
 
 
+#: 匹配 `aoi = ee.Geometry.Rectangle([ ... ])`，允许任意空白与换行。
+#: 只认 **4 个字面量** 的写法。`[^\[\]]*` 故意排除方括号，所以写成
+#: `Rectangle([[a,b],[c,d]])` 或变量拼接/f-string 的都匹配不到 —— 那种情况
+#: **不强行改**（改坏合法代码的风险大于收益），由单测里的形态断言守住。
+_AOI_RECT_RE = re.compile(
+    r"(?P<head>\baoi\s*=\s*ee\.Geometry\.Rectangle\(\s*\[)"
+    r"(?P<body>[^\[\]]*)"
+    r"(?P<tail>\])",
+    re.S,
+)
+
+#: 中心允许偏移（度）。0.02° ≈ 2km，只用来吸收四舍五入 —— **不是"容忍跑偏"**。
+#: 超过它就意味着分析对象已经不是用户问的那个地方了。
+_AOI_CENTER_TOL_DEG = 0.02
+
+#: 尺寸允许偏差（度）。0.01° 远小于任何真实 half（最小 0.05°），
+#: 所以"模型改了尺寸"必然被抓到，而浮点写法差异不会误报。
+_AOI_EXTENT_TOL = 0.01
+
+
+def enforce_aoi(code: str, region: str, *, allow_shrink: bool = False) -> tuple[str, str]:
+    """把生成代码里 `aoi` 的矩形**校正回区域库给的范围**。返回 (代码, 说明)。
+
+    为什么要这一道：提示词里同时存在两条关于 AOI 的指令 ——
+      ① 「逐字使用上面注入的矩形」（来自内置区域库，按区域类型给 half）
+      ② 「AOI 必须 ≤0.5°×0.5°」（资源预算硬约束）
+    对省域/大流域这两条**互相矛盾**，模型会不一致地自行折中。
+    2026-09-24 实测：随机抽的 5 个任务里，「广州市」把注入的 0.70° 缩成 0.50°
+    （正好是②的上限），中心没变但分析范围偏小 —— 地图仍落在广州，只是面积不符。
+
+    处理策略（**中心不可协商，尺寸可协商**）：
+      · 中心偏移 > 2km              → 一律替换成注入的矩形（这是"分析到别处"那一类 bug）
+      · 尺寸不符且 allow_shrink=False → 替换成注入的矩形
+      · 尺寸偏大且 allow_shrink=True  → 压回注入的矩形（不能超出，否则只会更慢）
+      · 尺寸偏小且 allow_shrink=True  → **保留**（超时/内存超限时缩小是合法缓解手段）
+      · 区域解析不出来 / 匹配不到字面量 → 原样返回，一个字都不改
+
+    `allow_shrink` 由调用方按错误类型决定：沙箱超时或 GEE 内存超限时为 True，
+    否则为 False。**不能一律强制恢复**——省域任务超时后强行把 2.6° 拽回去，
+    只会再超时一次，永远收敛不了。
+    """
+    reg = get_region(region)
+    if not reg:
+        return code, ""          # 解析不出意图就别乱动，代码里可能用的是运行时解析
+
+    lon, lat = float(reg["lon"]), float(reg["lat"])
+    half = float(reg.get("half", DEFAULT_HALF))
+    want = (lon - half, lat - half, lon + half, lat + half)
+
+    hits = list(_AOI_RECT_RE.finditer(code))
+    if not hits:
+        return code, ""
+
+    notes, out, cursor = [], [], 0
+    for m in hits:
+        nums = re.findall(r"-?\d+(?:\.\d+)?", m.group("body"))
+        if len(nums) != 4:
+            continue                       # 不是 4 个字面量（变量拼接等），不碰
+        w, s, e, n = (float(x) for x in nums)
+        clon, clat = (w + e) / 2, (s + n) / 2
+        shift = max(abs(clon - lon), abs(clat - lat))
+        size_off = max(abs((e - w) - half * 2), abs((n - s) - half * 2))
+
+        centered = shift <= _AOI_CENTER_TOL_DEG
+        exact = size_off <= _AOI_EXTENT_TOL
+        shrinking = (e - w) < half * 2 - _AOI_EXTENT_TOL
+
+        if centered and (exact or (allow_shrink and shrinking)):
+            continue                       # 合规，放行
+
+        out.append((m.start("body"), m.end("body"),
+                    "%.4f, %.4f, %.4f, %.4f" % want))
+        if not centered:
+            dkm = ((clon - lon) * 111 * math.cos(math.radians(lat))) ** 2
+            dkm = math.sqrt(dkm + ((clat - lat) * 111) ** 2)
+            notes.append(f"AOI 中心被移动了 {dkm:.1f}km（{clon:.3f},{clat:.3f} → "
+                         f"{lon},{lat}），已校正回区域库坐标")
+        else:
+            notes.append(f"AOI 尺寸被从 {(e - w):.2f}°×{(n - s):.2f}° 改成 "
+                         f"{half * 2:.2f}°×{half * 2:.2f}°，已校正回区域库给的范围")
+
+    if not out:
+        return code, ""
+
+    # 倒序拼回，避免前面的替换把后面的下标打乱
+    new_code = code
+    for a, b, txt in sorted(out, reverse=True):
+        new_code = new_code[:a] + txt + new_code[b:]
+    return new_code, "；".join(dict.fromkeys(notes))    # 多处同样的问题只报一次
+
+
 def generate_code(req: AnalysisRequest, user_id: int | None = None) -> tuple[str, str]:
     """返回 (code, 来源)，来源为 deepseek 或 fallback
 
@@ -401,6 +503,9 @@ def fix_code(code: str, error: dict, note: str = "") -> str:
                             "（哪些 SCL 类别被排除，尤其水体是否被排除）、排序方式"
                             "（必须仍为 sort('CLOUDY_PIXEL_PERCENTAGE')）、统计方法。"
                             "口径一变，同一请求前后两次的结果就不可比了。\n"
+                            "⚠ **AOI 的中心坐标绝对不能移动** —— 那会让结果分析到另一个地方去。"
+                            "确因超时/内存需要降低计算量时，只允许**围绕原中心等比缩小**，"
+                            "并保持矩形形状；禁止把中心点到别处、也禁止换成全国范围。\n"
                             f"{hint}\n"
                             f"{note}"
                             f"{_RESOURCE_RULES}\n"

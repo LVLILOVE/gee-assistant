@@ -9,10 +9,17 @@ from .models import AnalysisRequest
 
 
 def _node_generate(state: dict) -> dict:
-    code, src = codegen.generate_code(state["request"], state.get("user_id"))
+    req = state["request"]
+    code, src = codegen.generate_code(req, state.get("user_id"))
+    # 生成后立刻校一次 AOI。提示词里「逐字用注入的矩形」与「AOI ≤0.5°」两条，
+    # 对省域/大流域是**互相矛盾**的，模型会不一致地折中 —— 实测随机抽查里
+    # 「广州市」就被从 0.70° 缩成 0.50°（正好是 0.5° 上限），中心没变但范围偏小。
+    code, aoi_note = codegen.enforce_aoi(code, req.region)
     state["code"] = code
     state["code_source"] = src
     state["logs"].append(f"[生成] 代码来源={src}")
+    if aoi_note:
+        state["logs"].append(f"[生成] ⚠ AOI 已校正：{aoi_note}")
     return state
 
 
@@ -64,6 +71,17 @@ def _node_repair(state: dict) -> dict:
             "应写 image.reduce(ee.Reducer.mode())，或对 ImageCollection 调用 .mode()。"
         )
     new = codegen.fix_code(old, err, note=note)
+    # AOI 再校一次。修复路径同样会带上 `_RESOURCE_RULES`（含那条与注入范围
+    # 矛盾的 0.5° 上限），而超时提示里更是明确要求"把 AOI 缩小到 0.25°×0.25°"。
+    # 缩小是超时/内存超限的**合法缓解手段** → 那种情况放行；
+    # 其余情况必须还原，否则同一请求前后两次的 AOI 不一致，结果不可比。
+    _msg = (err.get("message") or "").lower()
+    allow_shrink = (err.get("category") == "timeout"
+                    or "memory" in _msg or "maxpixels" in _msg)
+    new, aoi_note = codegen.enforce_aoi(
+        new, state["request"].region, allow_shrink=allow_shrink)
+    if aoi_note:
+        state["logs"].append(f"[调试] ⚠ AOI 已校正：{aoi_note}")
     if new.strip() == old.strip():
         # 修复**没有发生**（而不是"修了但没好"）。接着跑只会得到逐字相同的错误。
         # 实测：分类任务曾连报 3 次同样的 AttributeError，正是这种情形。
