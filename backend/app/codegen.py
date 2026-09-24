@@ -4,7 +4,7 @@ from .debugger import summarize_error
 from .knowledge import build_knowledge_note
 from .models import AnalysisRequest, TASK_LABELS
 from .preferences import build_preference_note, get_profile
-from .regions import get_center
+from .regions import DEFAULT_HALF, get_region
 
 SYSTEM_PROMPT = (
     "你是资深卫星遥感与 Google Earth Engine 专家，负责把自然语言需求转成可运行的 Python 代码。"
@@ -148,18 +148,30 @@ def _build_prompt(req: AnalysisRequest, user_id: int | None = None) -> str:
     kb_note = build_knowledge_note(req.task_type.value, req.region)
     kb_block = f"\n{kb_note}\n" if kb_note else ""
     profile = get_profile(user_id)
-    center = get_center(req.region)
-    if center:
-        lon, lat = center
+    reg = get_region(req.region)
+    if reg:
+        lon, lat = reg["lon"], reg["lat"]
+        half = float(reg.get("half", DEFAULT_HALF))
         coord_block = (
-            f"区域中心坐标：经度 {lon}、纬度 {lat}。"
-            f"AOI 请以该点为中心，用 [{lon - 0.25:.4f}, {lat - 0.25:.4f}] ~ [{lon + 0.25:.4f}, {lat + 0.25:.4f}] "
-            "这一矩形范围构造 ee.Geometry.Rectangle，不要自行猜测更大范围。\n"
+            f"区域中心坐标（**已从内置区域库精确解析，请直接使用，不要自行猜测或改动**）："
+            f"经度 {lon}、纬度 {lat}（{reg.get('desc', '')}）。\n"
+            f"AOI 请以该点为中心，用 [{lon - half:.4f}, {lat - half:.4f}] ~ "
+            f"[{lon + half:.4f}, {lat + half:.4f}] 这一矩形范围构造 ee.Geometry.Rectangle"
+            f"（{half * 2:.2f}°×{half * 2:.2f}°）。\n"
         )
     else:
+        # 没解析出坐标时**不要叫模型自己编经纬度** —— 那正是 2026-09-23
+        # 「恩施大峡谷显示成苏州」的成因之一（模型编的坐标与硬编码兜底叠加）。
+        # 改为要求它在运行时调用 WB.resolve_region()，让解析发生在沙箱里、
+        # 有据可查；再解析不到就明确告知"无法定位"。
         coord_block = (
-            "该区域没有内置中心坐标，请自行给出一个合理的经纬度，"
-            "并保证 AOI 不超过 0.5°×0.5°。\n"
+            "⚠ 该区域**未能在内置区域库中解析出中心坐标**（可能是小众地名或写法特殊）。\n"
+            "**不要自行猜测经纬度**。请按下面的顺序处理：\n"
+            "  ① 先调用 `WB.resolve_region()`（不传参数则用注入的 region 变量）取坐标；\n"
+            "     它内部会查「业务区域库 + 全国省级/地级市坐标簿」，能解析就直接用。\n"
+            "  ② 若仍返回 None，则用全国范围 `[73.5, 18.0, 135.0, 53.5]` 兜底，\n"
+            "     并 print 一句明确的中文警告说明「未能确定分析区域坐标，当前为全国范围」。\n"
+            "**绝不能默默用一个与用户所问无关的坐标**。\n"
         )
     return (
         f"请生成一段 Google Earth Engine（Python API，模块名 ee）分析代码。\n"
@@ -185,7 +197,14 @@ def _build_prompt(req: AnalysisRequest, user_id: int | None = None) -> str:
         "   · WB.add_chart('图表标题', labels=[...], series=[{'name':'系列名','data':[...]}], kind='line'|'bar'|'pie')\n"
         "   · WB.stat('指标名', 数值) —— 上报关键统计值\n"
         "7. 可用上下文变量：region、start_date、end_date、cloud_threshold。\n"
-        f"8. 代码风格：{profile['code_style']}\n"
+        "8. 【AOI 变量名必须是 `aoi`】定义分析范围时务必写成 `aoi = ee.Geometry.Rectangle(...)`"
+        "（或 Polygon），不要用 aoi_rect / roi / geom 等别名。"
+        "沙箱会读取这个变量算出分析范围并回传前端用于**地图自动定位**；"
+        "变量名不对会导致前端无法把地图定位到你的分析区域。\n"
+        "9. 【区域坐标解析】若上面已给出中心坐标就直接用；**没有给出时**不许自己编经纬度，"
+        "用 `WB.resolve_region()` 在运行时解析（它查内置区域库 + 全国省市坐标簿），"
+        "仍取不到就用全国范围兜底并 print 明确的警告。\n"
+        f"10. 代码风格：{profile['code_style']}\n"
     )
 
 
@@ -196,13 +215,44 @@ def _fallback_code(req: AnalysisRequest) -> str:
     用服务端一次聚合后单次 getInfo 取回（而不是循环里打 12 次网络请求）。
     """
     label = TASK_LABELS.get(req.task_type, req.task_type.value)
-    center = get_center(req.region) or (120.13, 31.20)
-    lon, lat = center
+    # ⚠ 兜底中心**不能**写死某个具体地方（原先是 `or (120.13, 31.20)` = 太湖）。
+    # 那会让"恩施大峡谷"这类非内置地名的兜底图默默画在太湖 —— 用户看到的是
+    # 一张苏州底图，而分析对象在 1000 km 外，属于静默的错误结果。
+    # 取不到中心时改用全国范围 + 显式提示，让"不知道"这件事可见。
+    #
+    # 2026-09-24：内置库已从 13 条扩到 400+ 条（覆盖全国主要景区/山脉/湖泊/城市/省），
+    # 并且每条自带建议范围 `half`（景区小、流域大），所以这里改用它给出的范围，
+    # 不再一律 0.5°×0.5° —— 对"长江流域"这种大区域，0.5° 框得太小、统计没代表性。
+    reg = get_region(req.region)
+    if reg:
+        lon, lat = reg["lon"], reg["lat"]
+        half = float(reg.get("half", DEFAULT_HALF))
+        coord_line = (
+            f"# 区域中心由内置区域库解析：{req.region}（{reg.get('desc', '')}）\n"
+            f"aoi = ee.Geometry.Rectangle(["
+            f"{lon - half:.4f}, {lat - half:.4f}, {lon + half:.4f}, {lat + half:.4f}])\n"
+        )
+        print_line = (
+            f'print("[提示] 区域「{req.region}」使用内置中心坐标 '
+            f'({lon}, {lat})，范围 {half * 2:.2f}°×{half * 2:.2f}°")\n'
+        )
+    else:
+        # 全国范围（仅供定位，实际的统计意义有限），并在输出里说清楚
+        coord_line = (
+            f"# ⚠ 内置区域库中没有「{req.region}」的中心坐标，无法自动定位。\n"
+            "# 这里退化为全国范围仅用于跑通链路；如需真实分析请改用内置区域名，\n"
+            "# 或等待大模型可用时由模型自行给定坐标。\n"
+            "aoi = ee.Geometry.Rectangle([73.5, 18.0, 135.0, 53.5])\n"
+        )
+        print_line = (
+            f'print("[警告] 区域「{req.region}」不在内置区域库中，'
+            '当前使用全国范围兜底，分析结果不具备区域针对性")\n'
+        )
     return (
         "import ee\n\n"
         f'region = globals().get("region") or "{req.region}"\n'
-        "aoi = ee.Geometry.Rectangle(["
-        f"{lon - 0.25:.4f}, {lat - 0.25:.4f}, {lon + 0.25:.4f}, {lat + 0.25:.4f}])\n"
+        f"{coord_line}"
+        f"{print_line}"
         # 兜底日期优先跟随本次请求（req.start_date 自身已由 models.py 按当天
         # 推算默认值），再退化到 daterange 的全局默认。
         # 这段代码会原样交付给用户看/改，写死 '2024-01-01' 等于把过期基准固化进生成物。

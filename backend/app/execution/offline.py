@@ -48,6 +48,16 @@ def _ring(cx: float, cy: float, d: float = 0.18) -> list:
 def _aoi_feature(cx: float, cy: float) -> dict:
     return {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [_ring(cx, cy)]}, "properties": {"name": "分析区域"}}
 
+
+def _bbox(cx: float, cy: float, d: float = 0.18) -> list[float]:
+    """AOI 的 [west, south, east, north]。
+
+    离线图层本身就是 geojson，前端能从坐标算出范围；但仍一并给出 bbox，
+    保证「真实 GEE（纯栅格，只能靠 bbox）」与「离线（有 geojson）」两条
+    链路对前端呈现同一套契约，避免只在其中一条路上修好定位。
+    """
+    return [cx - d, cy - d, cx + d, cy + d]
+
 def _grid_features(cx: float, cy: float, n: int = 5, d: float = 0.18, value_fn=None) -> list:
     step = 2 * d / n
     feats = []
@@ -82,7 +92,8 @@ NDVI_LEGEND = [
 
 def _ndvi(cx: float, cy: float, request: AnalysisRequest) -> ExecutionOutcome:
     feats = _grid_features(cx, cy, value_fn=lambda i, j: round(0.15 + ((i * 13 + j * 7) % 80) / 100, 2))
-    layer = LayerData(name="NDVI 空间分布", geojson=_fc(feats), legend=NDVI_LEGEND)
+    layer = LayerData(name="NDVI 空间分布", geojson=_fc(feats), legend=NDVI_LEGEND,
+                      bbox=_bbox(cx, cy))
     months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
     series = [0.32, 0.38, 0.45, 0.52, 0.60, 0.66, 0.68, 0.64, 0.55, 0.47, 0.40, 0.35]
     chart = ChartData(
@@ -112,7 +123,8 @@ def _water(cx: float, cy: float, request: AnalysisRequest) -> ExecutionOutcome:
     ]
     water_feat = {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [blob]}, "properties": {"value": 1.0, "name": "水体"}}
     aoi = _aoi_feature(cx, cy)
-    layer = LayerData(name="水体提取结果", geojson=_fc([aoi, water_feat]), legend=[{"label": "水体", "color": "#2f6f9f"}])
+    layer = LayerData(name="水体提取结果", geojson=_fc([aoi, water_feat]),
+                      legend=[{"label": "水体", "color": "#2f6f9f"}], bbox=_bbox(cx, cy))
     months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
     series = [210, 215, 220, 225, 228, 230, 235, 232, 225, 218, 212, 208]
     chart = ChartData(
@@ -161,6 +173,7 @@ def _classification(cx: float, cy: float, request: AnalysisRequest) -> Execution
         name="地表分类结果",
         geojson=_fc([aoi, *cells]),
         legend=[{"label": k, "color": v} for k, v in CLASS_COLORS.items()],
+        bbox=_bbox(cx, cy),
     )
     chart = ChartData(
         title=f"{request.region} 地表覆盖占比",
@@ -194,6 +207,7 @@ def _change(cx: float, cy: float, request: AnalysisRequest) -> ExecutionOutcome:
         # 但注意：**红/蓝在红绿色盲眼中最难分辨**，所以标题里显式写出
         # "红=增加，蓝=减少"，不依赖颜色单独表意。
         legend=[{"label": "减少", "color": "#2f6f9f"}, {"label": "无变化", "color": "#e8e6de"}, {"label": "增加", "color": "#a33b2c"}],
+        bbox=_bbox(cx, cy),
     )
     years = _year_pairs(request)
     # 数值是合成的演示值，长度必须跟着标签走；用确定性公式而非随机数，

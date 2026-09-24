@@ -42,6 +42,12 @@ class LayerData(BaseModel):
     geojson: Optional[dict] = None
     tile_url: Optional[str] = None
     legend: list[dict] = Field(default_factory=list)
+    # 图层的地理范围 [west, south, east, north]。
+    # 【为什么必须有】栅格图层只有瓦片模板，模板字符串里不含任何坐标信息，
+    # 前端拿不到"这张图在哪儿"。原先前端改用**区域名**去内置字典查中心点，
+    # 字典里没有的地名就查不到 → 落到硬编码的太湖坐标 → 图在 1000 km 外看不见，
+    # 用户会以为"分析错了地方"。用真实 AOI 边界替代名字查表，才根治这类静默错位。
+    bbox: Optional[list[float]] = None
 
 
 class ChartData(BaseModel):

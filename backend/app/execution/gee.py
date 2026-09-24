@@ -54,6 +54,9 @@ class GEEBackend(ExecutionBackend):
                     geojson=l.get("geojson"),
                     tile_url=l.get("tile_url"),
                     legend=l.get("legend") or [],
+                    # AOI 边界由沙箱从用户代码里的 aoi 变量求得；
+                    # 前端靠它把视口定位到真正出图的位置（不再按区域名猜）。
+                    bbox=l.get("bbox"),
                 )
             )
         charts = []

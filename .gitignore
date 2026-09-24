@@ -92,3 +92,11 @@ frontend/dist.bak_*/
 # 无障碍核验的临时截图（聚焦前后对比，每次运行都重建）
 .focus_probe/
 .isolate/
+
+# 地图定位核验的脚手架（2026-09-23 修「地图显示成苏州」时新增）
+# 里面是：Edge 无头 profile（几十 MB 缓存）、复制的生产库副本 verify.db（含密文业务数据）、
+# 瓦片坐标报告与截图。**verify.db 是生产库的拷贝，绝不能进版本库。**
+backend/.cache_verify/
+# 一次性排查脚本（_ 前缀），确认无用后再决定是否保留
+backend/tools/_*.py
+backend/tools/_*.js

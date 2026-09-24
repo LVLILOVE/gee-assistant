@@ -717,6 +717,93 @@ def _harden() -> None:
     socket.socket.connect = guarded_connect  # type: ignore[assignment]
 
 
+def _polygon_bbox(coords) -> list[float] | None:
+    """递归遍历 GeoJSON 坐标，求 [west, south, east, north]。
+
+    ⚠ 必须显式限定深度与数值类型。只判断「第一个元素是不是数字」在遇到
+    畸形/超深嵌套数据时会把栈打爆（实测 `["a","b"]` 这种坐标会无限递归 →
+    `RecursionError`）。AOI 边界只是地图定位的辅助信息，
+    **绝不能因为解析失败把整个任务带崩**，所以这里宁可返回 None。
+    """
+    lons: list[float] = []
+    lats: list[float] = []
+    _MAX_DEPTH = 32
+
+    def walk(c, depth: int = 0) -> None:
+        if depth > _MAX_DEPTH or not isinstance(c, (list, tuple)):
+            return
+        if not c:
+            return
+        # 叶子：一对数值坐标
+        if isinstance(c[0], (int, float)) and not isinstance(c[0], bool):
+            if len(c) >= 2 and isinstance(c[1], (int, float)) and not isinstance(c[1], bool):
+                lons.append(float(c[0]))
+                lats.append(float(c[1]))
+            return
+        for x in c:
+            walk(x, depth + 1)
+
+    try:
+        walk(coords)
+    except (TypeError, ValueError, RecursionError):
+        return None
+    if not lons or not lats:
+        return None
+    return [min(lons), min(lats), max(lons), max(lats)]
+
+
+def _geojson_bbox(gj: dict | None) -> list[float] | None:
+    if not isinstance(gj, dict):
+        return None
+    t = gj.get("type")
+    if t == "FeatureCollection":
+        boxes = [_geojson_bbox(f) for f in (gj.get("features") or [])]
+        boxes = [b for b in boxes if b]
+        if not boxes:
+            return None
+        return [min(b[0] for b in boxes), min(b[1] for b in boxes),
+                max(b[2] for b in boxes), max(b[3] for b in boxes)]
+    if t == "Feature":
+        return _geojson_bbox(gj.get("geometry"))
+    if t in ("Polygon", "MultiPolygon", "LineString", "MultiLineString",
+             "Point", "MultiPoint"):
+        return _polygon_bbox(gj.get("coordinates"))
+    if t == "GeometryCollection":
+        boxes = [_geojson_bbox(g) for g in (gj.get("geometries") or [])]
+        boxes = [b for b in boxes if b]
+        if not boxes:
+            return None
+        return [min(b[0] for b in boxes), min(b[1] for b in boxes),
+                max(b[2] for b in boxes), max(b[3] for b in boxes)]
+    return None
+
+
+def _ee_geometry_bbox(geom) -> list[float] | None:
+    """从 ee.Geometry 求 [west, south, east, north]。
+
+    ⚠ 绝不能让这里的失败把整个任务带崩：AOI 边界只是"地图该看哪儿"的提示，
+    取不到就退化成前端按区域名估位。所以**全部异常都吞掉返回 None**，
+    并注意 `getInfo()` 会走网络 —— 外层已限制在真实 GEE 链路里。
+    """
+    if geom is None:
+        return None
+    # 先试 bounds()，它对任意几何都成立（矩形/多边形/点都行）
+    try:
+        b = geom.bounds()
+        info = b.getInfo()
+        coords = (info or {}).get("coordinates")
+        box = _polygon_bbox(coords)
+        if box:
+            return box
+    except Exception:  # noqa: BLE001
+        pass
+    # 退一步：整个几何转 GeoJSON
+    try:
+        return _geojson_bbox(geom.getInfo())
+    except Exception:  # noqa: BLE001
+        return None
+
+
 class Reporter:
     """结果上报契约：大模型代码通过 WB 上报图层与图表，沙箱据此生成 ExecutionOutcome。"""
 
@@ -726,6 +813,14 @@ class Reporter:
         self.charts: list[dict] = []
         self.stats: dict = {}
         self.notes: list[str] = []
+        # AOI 边界：由 main() 在 exec 之后从命名空间里取出并回填。
+        # 【为什么需要它】前端原先是靠"区域名"去内置字典里查中心点来定位地图的，
+        # 字典里没有的地名（恩施大峡谷、南京、任意景区…）就查不到，
+        # 于是落到 MapPanel 硬编码的太湖坐标 (31.2, 120.1) ——
+        # 用户看到的是一张苏州底图，而真正的图层在 1000 km 外、完全在视口之外，
+        # 表现为"恩施的 NDVI 显示成了苏州"。这是静默的错误定位，比直接报错更糟。
+        # 根治办法：把 AOI 的真实边界一路带到前端，不再依赖名字查表。
+        self.aoi_bbox: list[float] | None = None
 
     # ---- 图层 ----
     def add_layer(self, name: str, geojson: dict | None = None, tile_url: str | None = None, legend: list | None = None):
@@ -734,6 +829,10 @@ class Reporter:
             item["geojson"] = geojson
         if tile_url:
             item["tile_url"] = tile_url
+        # 栅格图层自己不带地理范围（瓦片模板里没有坐标信息），
+        # 所以用 AOI 的边界补上 —— 前端据此把视口定位到真正出图的地方。
+        if tile_url and self.aoi_bbox:
+            item["bbox"] = list(self.aoi_bbox)
         self.layers.append(item)
         return item
 
@@ -782,6 +881,68 @@ class Reporter:
 
     def print(self, *args):
         print(*args)
+
+    # ---- 区域解析（生成代码可调用）----
+    #: 注入的默认区域名。`main()` 在 exec 用户代码前会把它设成 request["region"]，
+    #: 这样 `WB.resolve_region()` 不传参也能工作 —— 提示词里就是这么写的，
+    #: 两边必须一致（实测踩过：实现漏了这个默认值，不传参永远返回 None）。
+    default_region: str = ""
+
+    def _resolve(self, name: str) -> tuple[float, float, float] | None:
+        """内部：解析成 (lon, lat, half)，三层优先级。解析不到返回 None。
+
+        ① `app/regions.py` 业务库 —— 400+ 条，自带**人工核定**的 `half` 范围
+        ② `app/gazetteer.py` 坐标簿 —— 384 条省级/地级市，按级别给范围
+        ③ None
+        """
+        key = (name or self.default_region or "").strip()
+        if not key:
+            return None
+        try:
+            from app.regions import get_region, DEFAULT_HALF
+            from app.gazetteer import lookup as _gz_lookup
+            from app.gazetteer import half_for
+        except Exception:  # noqa: BLE001
+            return None
+        reg = get_region(key)
+        if reg:
+            return (reg["lon"], reg["lat"], float(reg.get("half", DEFAULT_HALF)))
+        hit = _gz_lookup(key)
+        if hit:
+            return (hit[0], hit[1], half_for(hit[2]))
+        return None
+
+    def resolve_region(self, name: str = ""):
+        """把中文地名解析成 (lon, lat)；解析不到返回 None。
+
+        ## 为什么把这件事放进沙箱
+
+        2026-09-23 的「恩施大峡谷显示成苏州」本质上是**定位信息在链路里丢了**：
+        代码里没有可信坐标 → 退到硬编码太湖 → 图跑到 1000 km 外。
+        修完链路后（bbox 端到端回传）还需要保证**代码一开始就画对地方**。
+
+        纯靠 `app/regions.py` 枚举不可行（中国有 300+ 地级市、2800+ 县）。
+        所以在沙箱里给生成代码一个**运行时**查询入口：
+
+            _bb = WB.resolve_region_bbox()      # 不传参 = 用当前任务的 region
+            if _bb:
+                aoi = ee.Geometry.Rectangle(_bb)
+            else:
+                print('[警告] 未能确定分析区域坐标，改用全国范围')
+                aoi = ee.Geometry.Rectangle([73.5, 18.0, 135.0, 53.5])
+
+        ⚠ 解析不到时**返回 None 而不是猜一个坐标** —— 这正是那个 bug 的教训。
+        """
+        got = self._resolve(name)
+        return (got[0], got[1]) if got else None
+
+    def resolve_region_bbox(self, name: str = ""):
+        """同 `resolve_region`，但返回 [west, south, east, north]。解析不到返回 None。"""
+        got = self._resolve(name)
+        if not got:
+            return None
+        lon, lat, half = got
+        return [lon - half, lat - half, lon + half, lat + half]
 
 
 def _mock_ee():
@@ -901,6 +1062,9 @@ def main() -> None:
         _verify_toolchain()  # 黑名单没误伤运行依赖（mock 模式同样执行，防止漏测）
         ee = _install_ee()
         wb = Reporter(ee)
+        # 把当前任务的区域名交给报告器，这样生成代码里 `WB.resolve_region()`
+        # 不传参也能解析（提示词承诺了这种用法，两边必须一致）。
+        wb.default_region = str(request.get("region", "") or "")
         ns: dict = {
             "__name__": "__wb_sandbox__",
             "ee": ee,
@@ -918,7 +1082,27 @@ def main() -> None:
         exec(compile(code, "<gee_code>", "exec"), ns)  # noqa: S102
 
         stats = getattr(wb, "stats", {})
+        # 先把 AOI 边界算出来，再让 add_* 把它挂到栅格图层上。
+        # 代码里的 AOI 变量名是约定俗成的 `aoi`（提示词里明确要求这样命名），
+        # 这里做几个常见别名的兜底，取不到就算 —— 不能让边界缺失影响任务成败。
+        for _k in ("aoi", "aoi_rect", "region_geom", "geometry", "roi"):
+            _g = ns.get(_k)
+            if _g is None or not hasattr(_g, "bounds"):
+                continue
+            _b = _ee_geometry_bbox(_g)
+            if _b:
+                wb.aoi_bbox = _b
+                break
+        if wb.aoi_bbox:
+            # 已上报的图层需要补挂（add_layer 执行时 aoi_bbox 还是 None）
+            for _l in wb.layers:
+                if _l.get("tile_url") and not _l.get("bbox"):
+                    _l["bbox"] = list(wb.aoi_bbox)
+
         auto_layers, auto_charts = _auto_collect(ns)
+        for _l in auto_layers:
+            if _l.get("tile_url") and not _l.get("bbox") and wb.aoi_bbox:
+                _l["bbox"] = list(wb.aoi_bbox)
         layers = wb.layers or auto_layers
         charts = wb.charts or auto_charts
         out = buf.getvalue()

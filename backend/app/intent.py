@@ -17,9 +17,9 @@ TASK_TYPE_ENUM = ["ndvi", "water", "classification", "change_detection"]
 REQUIRED_FIELDS = ["task_type", "region"]
 
 TASK_KEYWORDS = {
-    "ndvi": ["植被", "ndvi", "绿度", "长势", "绿化", "植被指数", "作物", "叶面积"],
+    "ndvi": ["植被", "ndvi", "绿度", "长势", "绿化", "植被指数", "作物", "叶面积", "森林覆盖"],
     "water": ["水体", "水域", "湖泊", "河流", "水库", "水面", "湿地", "水"],
-    "classification": ["分类", "地类", "土地利用", "地表", "土地覆盖", "用地", "覆盖"],
+    "classification": ["分类", "地类", "土地利用", "地表", "土地覆盖", "用地", "覆盖", "林覆盖"],
     "change_detection": ["变化", "对比", "变迁", "演变", "动态", "变化检测", "监测"],
 }
 
@@ -99,11 +99,165 @@ def _rule_parse(text: str) -> dict:
     cm = re.search(r"云量[^\d]{0,4}(\d{1,3})", text)
     if cm:
         res["cloud_threshold"] = float(cm.group(1))
-    # 区域：常见后缀
-    rm = re.search(r"([\u4e00-\u9fa5]{2,8}(?:流域|湖|市|省|区|县|三角洲|盆地|平原))", text)
-    if rm:
-        res["region"] = rm.group(1)
+    res["region"] = _extract_region(text)
     return res
+
+
+#: 动词 / 客套话前缀。模型在 `_build_parse_prompt` 里被明确要求剥掉，
+#: 规则兜底同样必须剥 —— 否则 "看看鄱阳湖" 会被当成完整地名，
+#: 而 `get_center("看看鄱阳湖")` 虽然靠子串匹配侥幸能命中，
+#: 落库的 region 字段却是脏的（前端区域选择、历史回填都会拿它去匹配）。
+_VERB_PREFIXES = (
+    "帮我看看", "帮我分析一下", "帮我分析", "帮我看下", "帮我查一下", "帮我查",
+    "请帮我看看", "请帮我分析", "请分析一下", "请分析", "请看看", "看一下", "看下",
+    "看看", "查一下", "查查", "分析一下", "分析下", "分析", "评估一下", "评估",
+    "监测一下", "监测", "检测一下", "检测", "对比一下", "对比", "比较一下", "比较",
+    "统计一下", "统计", "计算一下", "计算", "研究一下", "研究", "我想知道", "我想看",
+    "想知道", "看一下", "给我看看", "给我看", "了解一下", "关注一下",
+)
+
+#: 常见地名后缀。**先按它做一轮贪心抽取，再退回区域库匹配。**
+#: 用 `finditer` 而不是 `search`：一句话里可能出现多个候选地名
+#: （"从太湖流域到鄱阳湖"），取最长的那个更可能是用户真正想分析的目标。
+_REGION_SUFFIX = (
+    "自然保护区|自治区|特别行政区|国家公园|国家森林公园|开发区|风景区|名胜区|"
+    "旅游度假区|大峡谷|三角洲|丘陵|山脉|山地|高原|盆地|平原|草原|沙漠|沙地|"
+    "流域|湖区|水库|湿地|林场|林区|梯田|古镇|古城|遗址|公园|景区|"
+    "省|市|县|区|盟|州|旗|"
+    "湖|河|江|海|岛|山|峰|岭|峡|湾|泉|池|关|口|原"
+)
+
+
+#: 日常词汇 —— 出现这些词就基本可以断定**不是地名**。
+#:
+#: 为什么需要它：③ 短句兜底要决定"这句话到底是不是一个地名"。
+#: 前三道门槛（无任务词 / 无动词 / 无语气词）挡不住「今天天气不错」——
+#: 它三个都不沾，长度也合法。但把它当地名落库，下游 `get_center` 一定查不到，
+#: 于是又变成一次"定位不了"。
+#:
+#: 这里的取舍是**宁可漏也不要错**：漏了 → 返回 None → 上层问一句"分析哪个区域"，
+#: 用户补充一句就好了；错了 → 拿假地名跑一次任务，白烧 token 和 GEE 额度，
+#: 还给出一份没有区域针对性的结果。两者代价不对等。
+_NON_PLACE_WORDS = (
+    "天气", "不错", "东西", "什么", "怎么", "为什么", "可以", "可以吗", "帮我",
+    "请问", "谢谢", "你好", "问题", "事情", "时候", "地方", "知道", "明白",
+    "意思", "功能", "用法", "推荐", "建议", "介绍", "说明", "讲讲", "聊聊",
+)
+
+
+def _strip_verbs(s: str) -> str:
+    """剥掉地名前面的动词/客套话（"看看鄱阳湖" → "鄱阳湖"）。"""
+    out = s.strip()
+    changed = True
+    # 反复剥，处理"帮我看看…"这种叠加前缀
+    while changed:
+        changed = False
+        for v in _VERB_PREFIXES:
+            if out.startswith(v) and len(out) > len(v):
+                out = out[len(v):]
+                changed = True
+                break
+    # 结尾的疑问/语气词也去掉（"鄱阳湖怎么样了" → "鄱阳湖"）
+    out = re.sub(r"(怎么样|怎样|如何|是什么|在哪儿|在哪|了吗|呢|吗|的|了)+$", "", out.strip())
+    return out.strip()
+
+
+def _extract_region(text: str) -> str | None:
+    """从自然语言里抽出地名。三级策略，从最可信到最宽松。
+
+    2026-09-24 重写。原实现只做「后缀正则 search」，实测三类失败：
+      · 「恩施大峡谷的植被情况」→ 无后缀命中 → region=None
+        → 前端反问"请问分析哪个区域？"（用户明明已经说了）
+      · 「看看鄱阳湖」→ 抽成 "看看鄱阳湖"，动词粘在地名里
+      · 「今天天气不错」→ 整句被当地名
+
+    现在的顺序（**顺序不能换**，见每步的理由）：
+
+      ① **后缀贪心**：抽 "XX市/XX湖/XX流域/XX大峡谷" 这类完整地名。
+         放在最前面是因为它**最贴近用户原话** —— 用户写"六盘水市"就返回
+         "六盘水市"，不要退成"六盘水"。而且必须校验候选**真的能查库**
+         （坐标簿有"六盘水"没有"六盘水市"，所以 ①返回"六盘水市"后要能
+         回落到"六盘水"——见 `_normalize_candidate`）。
+      ② **区域库直查**：库里/坐标簿里的名称直接出现在原文就取它（长名优先）。
+         覆盖 ① 抽不出来的写法（如无后缀的"恩施"）。
+      ③ 都没有 → 短句兜底 or None（**不猜**）。
+    """
+    if not text:
+        return None
+    cleaned = _strip_verbs(text)
+
+    # 加载可匹配名称（区域库正式名 + 别名 + 坐标簿）
+    names: list[str] = []
+    try:
+        from .gazetteer import GAZETTEER_KEYS
+        from .regions import REGION_LIBRARY
+        for r in REGION_LIBRARY:
+            names.append(r["name"])
+            names.extend(r.get("aliases", []))
+        names.extend(GAZETTEER_KEYS)
+    except Exception:  # noqa: BLE001
+        pass
+    names = [n for n in set(names) if len(n) >= 2]
+    # 长度降序 —— 长名优先，避免短名抢走长名
+    names.sort(key=len, reverse=True)
+
+    # ① 区域库直查 —— **放在后缀贪心之前**。
+    #
+    # 为什么顺序是这样（实测教训）：后缀贪心和区域库直查都用"最长优先"，
+    # 但两者的"长"含义不同，混在一起会互相压制：
+    #   · `恩施大峡谷的植被情况` —— 库里有「恩施大峡谷」(5 字) 和「恩施」(2 字)。
+    #     直查能取到「恩施大峡谷」；若先跑后缀贪心，正则会先咬到「...的植被」
+    #     这类尾巴，或者只取到「恩施」再靠去尾查库蒙对，**结果不稳定**。
+    #   · 库里的名字都带坐标、是人工核过的，比正则抽出来的更可信。
+    # 所以：**先信库，再用正则兜库外的**。
+    for n in names:
+        if n in cleaned:
+            return n
+
+    # ② 后缀贪心（库外地名，如"某某新城"）
+    cands = [
+        m.group(0) for m in re.finditer(
+            r"[\u4e00-\u9fa5]{1,9}(?:" + _REGION_SUFFIX + ")", cleaned
+        )
+    ]
+    cands = [c for c in cands if len(c) >= 2]
+    if cands:
+        best = max(cands, key=len)
+        if best in names:
+            return best
+        # 去尾再查库（"六盘水市" → "六盘水"），返回**库里的规范名**
+        for cut in range(1, min(3, len(best))):
+            trimmed = best[:-cut]
+            if len(trimmed) >= 2 and trimmed in names:
+                return trimmed
+        # 库外的新地名：要求它**真的像地名**才接受。
+        # 实测「我想看点东西」会被 ①的窗口咬出「点东西」——
+        # 这类结果的共性是结尾落在"东西/什么/地方"这类空泛词上，
+        # 或者整串里含动词。
+        if not re.search(r"(东西|什么|地方|事情|问题|情况|时候|一下)$", best) \
+                and not any(v in best for v in _VERB_PREFIXES):
+            return best
+
+    # ③ 短句兜底：整句短、**不含任务词/动词/疑问词**时，才把整句当地名。
+    # ⚠ 这个兜底很容易误伤：实测「今天天气不错」「我想看点东西」都曾被误判成地名
+    # → 前端拿它去查库查不到 → 又是一次"定位不了"。
+    #
+    # 加四道门槛（缺一不可）：
+    #   a. 不含任何任务关键词（"植被""水体"…）—— 否则抽的是任务不是地名
+    #   b. 不含任何动词/客套话（"看看""分析""想看"…）—— 否则抽的是整句话
+    #   c. 不以疑问/语气词/标点结尾
+    #   d. **不含日常词汇**（"天气""不错""东西"…）—— 见 `_NON_PLACE_WORDS`
+    #
+    # 门槛 d 是补上来的：前三道过不了「今天天气不错」（它没任务词、没动词、
+    # 不以语气词结尾，长度也合规）。但"没有地名线索"和"这就是个地名"是两回事 ——
+    # 与其猜，不如**返回 None 让上层去追问**，这正是本模块的一贯原则。
+    if 2 <= len(cleaned) <= 10 \
+            and not any(k in cleaned for kws in TASK_KEYWORDS.values() for k in kws) \
+            and not any(v in cleaned for v in _VERB_PREFIXES) \
+            and not any(w in cleaned for w in _NON_PLACE_WORDS) \
+            and not re.search(r"[？?。，,、！!的了呢吗啊呀嘛]$", cleaned):
+        return cleaned
+    return None
 
 
 def _chat_json(messages: list[dict]) -> str:
