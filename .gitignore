@@ -97,6 +97,15 @@ frontend/dist.bak_*/
 # 里面是：Edge 无头 profile（几十 MB 缓存）、复制的生产库副本 verify.db（含密文业务数据）、
 # 瓦片坐标报告与截图。**verify.db 是生产库的拷贝，绝不能进版本库。**
 backend/.cache_verify/
-# 一次性排查脚本（_ 前缀），确认无用后再决定是否保留
+# 一次性排查脚本（_ 前缀），确认无用后再决定是否保留。
+#
+# ⚠️ 这条规则踩过一次真实的坑（2026-09-28）：新加的**共享模块**原名 `_browser.py`，
+#    被它静默忽略 —— 本机一切正常（文件就在磁盘上），但提交时压根不会被 add →
+#    新鲜克隆上无障碍/截图脚本直接 ModuleNotFoundError（坏得很安静）。
+#    **规矩：被其它脚本 import 的模块，一律不要用 `_` 前缀**（用 `xxx_util.py`）。
+#    守卫：`backend/tools/test_audit_regressions.py` 的 J 段用 `git check-ignore`
+#    逐个核对"脚本 import 的本地模块是否真的进得了版本库"。
+#    （`_env.py` / `_pub_e2e.py` / `_shot_*.py` 仍在库里，只因本规则加得比它们晚：
+#      已跟踪文件不受新增忽略规则影响。）
 backend/tools/_*.py
 backend/tools/_*.js

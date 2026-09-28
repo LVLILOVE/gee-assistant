@@ -14,12 +14,22 @@ import tempfile
 import time
 import urllib.request
 
-EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\153.0.4234.48\msedge.exe"
+
 PORT = 9224
 BASE = "http://127.0.0.1:8010"
 out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from browser_util import HINT as BROWSER_HINT, find_edge  # noqa: E402
+
+# ⚠️ 绝不写死带版本号的浏览器路径：Edge 自动更新后 `Application/<版本>/`
+#    会被改名成 `<版本>.deleting`，脚本直接 FileNotFoundError。
+#    （2026-09-28 实测：两个无障碍套件 + 这三个截图脚本同时失效。）
+EDGE = find_edge()
+if not EDGE:
+    print("跳过：未找到 Edge/Chrome 浏览器，截图无法进行")
+    print(f"      已找过：{BROWSER_HINT}")
+    raise SystemExit(0)
 from _env import _env  # noqa: E402
 
 # ⚠ 必须从 backend/.env 读凭据（同 _shot_result.py 的说明）：

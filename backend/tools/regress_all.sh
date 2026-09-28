@@ -65,8 +65,10 @@ SUITES=(
     # （结论空月下标错位 / 兜底代码未转义的用户输入 / fail_orphans 拿密文当明文 /
     #   意图区间倒置 / 枚举外 task_type 判成 complete / 瓦片重试叠乘拖垮线程池 /
     #   图层生成失败被静默吞成"成功"）。
-    # 这 7 条在加入前**回归是一条都抓不到的**（当时 537/537 全绿但问题真实存在）——
+    # 这 7 条在加入前**回归是一条都抓不到的**（当时 9 套件 488/488 全绿，问题却真实存在）——
     # 全绿 ≠ 没问题，所以判据必须钉住。
+    # ⚠ 引用历史总数只写**提交信息里可查证**的值（488 见 462→488 那轮）；
+    #   本文件早前曾误写 537，属笔误，别照抄。
     test_audit_regressions.py
 )
 # demo_doctor 是纯规则自检（不碰服务/隧道/网络、秒级），所以放在默认清单里；
@@ -212,13 +214,36 @@ for f in "${SUITES[@]}"; do
     rc=$?
     elapsed=$((SECONDS - t0))
 
-    # 各套件统一以「N/M 通过」收尾（有 === 包裹的也在同一行内）
+    # 各套件统一以「N/M 通过」收尾（有 === 包裹的也在同一行内）。
+    #
+    # ⚠️ 但 `--http` 那三个 shell 套件用的是另外两种**等价格式**，必须一并认，
+    #    否则"零失败"也会被判成 ❌。实测过：`--with-doctor --http` 全绿的一场里，
+    #    三个 HTTP 套件全部报"没解析到结果行"，汇总变成"3 个套件没全绿"。
+    #    这是**假红**：它不会漏掉问题，但会把绿色运行说成红的 ——
+    #    久了人就开始无视红色，比假绿更难治。
+    #      · `结果：41 通过，0 失败，2 跳过`（test_auth_http.sh）
+    #      · `结果：49 通过 / 0 失败`        （test_isolation_http.sh / test_quota_http.sh）
+    #    推导规则：`N 通过` + `M 失败` → `N/(N+M) 通过`（跳过项不计入分母，
+    #    与「N/M 通过」的既有语义一致）。
     summary="$(grep -oE '[0-9]+/[0-9]+ *通过' "$log" 2>/dev/null | tail -1)"
+    if [ -z "$summary" ]; then
+        _ok="$(grep -oE '结果：[0-9]+ *通过' "$log" 2>/dev/null | tail -1 | grep -oE '[0-9]+')"
+        _fail="$(grep -oE '结果：.*' "$log" 2>/dev/null | tail -1 | grep -oE '[0-9]+ *失败' | tail -1 | grep -oE '[0-9]+')"
+        if [ -n "$_ok" ] && [ -n "$_fail" ]; then
+            summary="${_ok}/$((_ok + _fail)) 通过"
+        fi
+    fi
 
     if [ "$rc" = "124" ]; then
         echo "   ❌ 超时被杀（>${PER_TIMEOUT}s）—— 日志尾部："
         tail -5 "$log" | sed 's/^/      /'
         FAILED_LIST+=("$f")
+    elif grep -q '^跳过：' "$log" 2>/dev/null; then
+        # 套件主动声明「环境前置条件不满足」（例如本机没有 Edge/Chrome）。
+        # 记进"已跳过"而不是"未通过"：缺前置条件不是产品缺陷。
+        # 但**必须显式说出来** —— 绝不许悄悄变成 0/0 的假绿。
+        echo "   ⏭  $(grep -m1 '^跳过：' "$log" | sed 's/^跳过：//')   ${elapsed}s"
+        SKIPPED_LIST+=("$f")
     elif [ -z "$summary" ]; then
         echo "   ❌ 没解析到结果行（退出码 $rc）—— 日志尾部："
         tail -5 "$log" | sed 's/^/      /'

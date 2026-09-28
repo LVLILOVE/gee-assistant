@@ -13,7 +13,7 @@ import tempfile
 import time
 import urllib.request
 
-EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\153.0.4234.48\msedge.exe"
+
 PORT = 9222
 BASE = "http://127.0.0.1:8010"
 
@@ -21,6 +21,16 @@ BASE = "http://127.0.0.1:8010"
 #   export ADMIN_PASSWORD。原来只读 os.environ 会拿到空密码 → 登录失败 →
 #   截出来的是登录页，但你以为是"主界面"，而且脚本会一路"成功"退出。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from browser_util import HINT as BROWSER_HINT, find_edge  # noqa: E402
+
+# ⚠️ 绝不写死带版本号的浏览器路径：Edge 自动更新后 `Application/<版本>/`
+#    会被改名成 `<版本>.deleting`，脚本直接 FileNotFoundError。
+#    （2026-09-28 实测：两个无障碍套件 + 这三个截图脚本同时失效。）
+EDGE = find_edge()
+if not EDGE:
+    print("跳过：未找到 Edge/Chrome 浏览器，截图无法进行")
+    print(f"      已找过：{BROWSER_HINT}")
+    raise SystemExit(0)
 from _env import _env  # noqa: E402
 
 USER, PWD = _env("ADMIN_USERNAME", "admin"), _env("ADMIN_PASSWORD", "")

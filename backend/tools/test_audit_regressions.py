@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 """2026-09-28 产品自检发现的缺陷 —— 回归守卫。
 
-为什么单独一个文件：这些缺陷**回归套件原本一条都覆盖不到**（当时 537/537 全绿，
+为什么单独一个文件：这些缺陷**回归套件原本一条都覆盖不到**（当时 9 套件 488/488 全绿，
 但下面每一条都是真实可复现的错误行为）。全绿却不等于没问题，所以把这次的
 判据钉死在这里，防止将来改动把它们悄悄带回来。
+
+⚠ 引用历史总数只写**可查证**的值：488 见提交信息里的 `462/462 → 488/488` 那轮。
+  本文件早前曾误写 537，属笔误，别照抄。
 
 覆盖的 7 个缺陷（每条都是"能构造出触发路径"的真实问题，不是理论风险）：
 
@@ -32,7 +35,9 @@ import ast
 import json
 import os
 import pathlib
+import re
 import sqlite3
+import subprocess
 import sys
 import tempfile
 
@@ -202,6 +207,165 @@ check("mock 执行成功", res.ok is True)
 check("stats 仍然贯通（别把统计契约弄坏）", res.stats.get("面积") == 1.23, str(res.stats))
 check("图层警告已进入用户可见 stdout", "图层警告" in res.stdout, repr(res.stdout[:120]))
 check("原有 print 输出未丢失", "done" in res.stdout)
+
+# ============================================================ H 前端源码守卫
+print("\n[H] 前端源码守卫（前端整块无测试框架，这里做最小静态断言）")
+_SRC = _BACKEND.parent / "frontend" / "src"
+
+
+def _js_code(name: str) -> str:
+    """剥掉 `//` 行注释后再扫。
+
+    为什么必须剥：修复代码的**注释里会引用旧写法/旧坐标**（本项目踩过 ——
+    直接扫原文会把正确代码判成违规）。这里虽然都是"必须存在"型断言，
+    剥注释仍能避免注释里的示例让断言假通过。
+    """
+    p = _SRC / name
+    if not p.exists():
+        return ""
+    return "\n".join(ln.split("//", 1)[0] for ln in p.read_text(encoding="utf-8").splitlines())
+
+
+_MAP = _js_code("MapPanel.jsx")
+_APP = _js_code("App.jsx")
+_CHART = _js_code("ChartPanel.jsx")
+
+check("MapPanel 监听 tileerror（瓦片 400/链接过期不再静默）",
+      "tileerror" in _MAP and "noteTileError" in _MAP)
+check("MapPanel 卸载时销毁 Leaflet 实例（防地图泄漏）",
+      "mapRef.current.remove()" in _MAP)
+check("MapPanel 用内容指纹而非「有没有 geojson」",
+      "geoFingerprint" in _MAP)
+check("ChartPanel 饼图分支对 chart.series 兜底（防整栏白屏）",
+      "chart.series || []" in _CHART)
+check("App 轮询回调认领任务 id（防结果错位）",
+      "activeTaskIdRef.current !== id" in _APP)
+check("App 轮询失败有兜底（防转圈永不消失）",
+      "任务状态多次刷新失败" in _APP)
+check("App 有 chat 并发闸门", "chatBusyRef" in _APP)
+check("App 登出会清空对话（防跨用户残留）",
+      "setConvo([])" in _APP)
+
+# ============================================================ I 环境路径与汇总格式守卫
+print("\n[I] 环境路径守卫（不许把「当时的机器状态」写死进代码）")
+
+# ⚠ 为什么守这个（2026-09-28 实测的真缺陷）：
+#   两个无障碍套件 + 三个截图脚本（_shot_ui / _shot_focus / _shot_result）
+#   原先都把浏览器路径写死成 `Application\153.0.4234.48\msedge.exe`。
+#   Edge 自动更新后该目录被改名为 `153.0.4234.48.deleting`，于是
+#   `subprocess.Popen` 直接 FileNotFoundError —— **不是校验失败，是整套无障碍/
+#   截图校验根本没跑起来**；而那两个套件只有显式 `--with-a11y` 才执行，
+#   所以"校验层已整体不可用"这件事长期无人发现（跑的人只看到一句"没解析到结果行"）。
+#   这与 test_no_stale_year.py 守的是**同一类错误**：把当时有效的环境值固化进代码。
+#   ⚠ 下面这行注释**故意不写成带引号的路径**，否则会被下面自己的扫描命中。
+#   反面样本（不要照抄）：C:\Program Files (x86)\Microsoft\Edge\Application\153.0.4234.48\msedge.exe
+_VER_PIN = re.compile(
+    r"""["'][A-Za-z]:[\\/][^"'\n]*?[\\/]\d+\.\d+\.\d+(?:\.\d+)?[\\/][^"'\n]*?\.exe["']"""
+)
+# 扫**全部** tools/*.py，不只那两个套件：同一批硬编码实测散落在 5 个文件里，
+# 只守其中两个就是典型的"补一个点、漏一个面"。
+# 排除本文件自身（上面那段注释要引用反面样本）。
+_scan_targets = sorted(
+    p for p in _HERE.glob("*.py") if p.name != pathlib.Path(__file__).name
+)
+check("tools/ 下有可扫描的 python 文件（防 glob 落空导致空断言假绿）",
+      len(_scan_targets) >= 5, f"扫到 {len(_scan_targets)} 个")
+_bad_paths = []
+for _p in _scan_targets:
+    _hits = _VER_PIN.findall(_p.read_text(encoding="utf-8"))
+    if _hits:
+        _bad_paths.append(f"{_p.name}: {_hits[0]}")
+check("没有任何 tools/*.py 写死带版本号的浏览器绝对路径（自动更新后会失效）",
+      not _bad_paths, "；".join(_bad_paths[:3]))
+
+for _name in ("test_a11y_contrast.py", "test_a11y_kbd.py",
+              "_shot_ui.py", "_shot_focus.py", "_shot_result.py"):
+    _src = (_HERE / _name).read_text(encoding="utf-8")
+    check(f"{_name} 用 find_edge() 动态解析浏览器", "find_edge()" in _src)
+
+_bro = (_HERE / "browser_util.py").read_text(encoding="utf-8")
+check("浏览器定位器存在且会跳过 .deleting 残留目录",
+      "def find_edge" in _bro and "deleting" in _bro)
+
+# 汇总格式：shell 套件用「N 通过，M 失败」，解析器必须认，否则 `--http` 那三个
+# 套件即使零失败也会被判成 ❌（**假红**），汇总直接变成"3 个套件没全绿"。
+_ra = (_HERE / "regress_all.sh").read_text(encoding="utf-8")
+check("regress_all 解析器含 shell 套件的「N 通过」正则",
+      "结果：[0-9]+ *通过" in _ra)
+check("regress_all 解析器含「M 失败」正则与跳过通道",
+      "[0-9]+ *失败" in _ra and "跳过：" in _ra)
+
+
+def _parse_summary(text: str) -> str:
+    """复刻 regress_all.sh 的解析规则，用行为断言钉住三种格式。"""
+    m = re.findall(r"(\d+)/(\d+) *通过", text)
+    if m:
+        return f"{m[-1][0]}/{m[-1][1]} 通过"
+    ok = re.findall(r"结果：(\d+) *通过", text)
+    fail = re.findall(r"(\d+) *失败", text)
+    if ok and fail:
+        return f"{ok[-1]}/{int(ok[-1]) + int(fail[-1])} 通过"
+    return ""
+
+
+check("认 标准格式「N/M 通过」",
+      _parse_summary("结果：120/120 通过") == "120/120 通过")
+check("认 auth_http 的「N 通过，M 失败，K 跳过」",
+      _parse_summary("结果：41 通过，0 失败，2 跳过") == "41/41 通过")
+check("认 isolation/quota 的「N 通过 / M 失败」",
+      _parse_summary("结果：49 通过 / 0 失败") == "49/49 通过")
+check("有失败时不得算成全绿（防假绿）",
+      _parse_summary("结果：40 通过 / 2 失败") == "40/42 通过")
+
+# ============================================================ J 依赖可提交性守卫
+print("\n[J] 依赖可提交性（脚本依赖的本地模块必须真的进得了版本库）")
+
+# ⚠️ 为什么守这个（2026-09-28 实测，**提交前一刻才发现**的坑）：
+#   `.gitignore` 里有一条 `backend/tools/_*.py`（注释写的是"一次性排查脚本"），
+#   而我新加的共享模块原本叫 `_browser.py` → **被静默忽略**。
+#   本机一切正常（文件就在磁盘上），但提交时它压根不会被 add →
+#   **新鲜克隆上 a11y 与截图脚本直接 ModuleNotFoundError**。
+#   即"验证工具依赖了一个进不了版本库的文件"，与 T1 同一族：坏得很安静，
+#   而且**本地自测永远发现不了**。
+#   教训：**共享模块不要用 `_` 前缀** —— 那个前缀在本仓库意味着"可丢弃的脚手架"。
+#   （顺带发现：`_env.py` / `_pub_e2e.py` / `_shot_*.py` 能被跟踪，只是因为
+#     那条规则加得比它们晚，已跟踪文件不受新增规则影响 —— 属于历史侥幸。）
+
+
+def _is_ignored(p: pathlib.Path):
+    """True=被 .gitignore 命中（提交时会漏掉）；False=可提交；None=本机无 git。"""
+    try:
+        r = subprocess.run(["git", "check-ignore", "-q", str(p)],
+                           cwd=str(_BACKEND.parent), capture_output=True, timeout=20)
+    except Exception:  # noqa: BLE001
+        return None
+    # git check-ignore 约定：0=命中忽略规则，1=未命中，其它=出错（如不在仓库里）
+    return True if r.returncode == 0 else (False if r.returncode == 1 else None)
+
+
+_IMPORT_RE = re.compile(
+    r"^\s*(?:from\s+([A-Za-z_]\w*)\s+import|import\s+([A-Za-z_]\w*))", re.M
+)
+_dep_checked, _dep_unknown, _dep_bad = 0, 0, []
+for _p in _scan_targets:
+    for _m in _IMPORT_RE.finditer(_p.read_text(encoding="utf-8")):
+        _mod = _m.group(1) or _m.group(2)
+        _dep = _HERE / f"{_mod}.py"
+        if not _dep.is_file():
+            continue  # 非本地模块（标准库 / 第三方）
+        _dep_checked += 1
+        _ig = _is_ignored(_dep)
+        if _ig is None:
+            _dep_unknown += 1
+        elif _ig:
+            _dep_bad.append(f"{_p.name} → {_dep.name}")
+
+check("tools/ 内部依赖已实际检查（防正则落空导致空断言假绿）",
+      _dep_checked >= 3, f"检查了 {_dep_checked} 处")
+check("没有脚本依赖被 .gitignore 忽略的本地模块（否则新鲜克隆上直接 ImportError）",
+      not _dep_bad, "；".join(_dep_bad[:3]))
+if _dep_unknown:
+    print(f"  ⚠ 有 {_dep_unknown} 处依赖无法判定（本机 git 不可用），未计入断言")
 
 # ============================================================ 汇总
 print()

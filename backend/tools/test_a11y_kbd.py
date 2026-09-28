@@ -15,12 +15,19 @@ import tempfile
 import time
 import urllib.request
 
-EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\153.0.4234.48\msedge.exe"
 PORT = 9226
 BASE = "http://127.0.0.1:8010"
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from browser_util import HINT as BROWSER_HINT, find_edge  # noqa: E402
 from _env import _env  # noqa: E402
+
+# ⚠️ 同 test_a11y_contrast.py：不写死带版本号的浏览器路径（理由见 tools/_browser.py）。
+EDGE = find_edge()
+if not EDGE:
+    print("跳过：未找到 Edge/Chrome 浏览器，键盘可达性核验无法进行（需要真实浏览器）")
+    print(f"      已找过：{BROWSER_HINT}")
+    raise SystemExit(0)
 
 user = _env("ADMIN_USERNAME", "admin")
 pwd = _env("ADMIN_PASSWORD", "")
@@ -93,7 +100,36 @@ class CDP:
                        "windowsVirtualKeyCode": 9 if name == "Tab" else 0})
 
     def shot(self, path):
-        r = self.call("Page.captureScreenshot", {"format": "png"})
+        try:
+            r = self.call("Page.captureScreenshot", {"format": "png"}, t=45)
+        except TimeoutError:
+            # ================= 已知问题（2026-09-28 定位，**未解决**）=================
+            # 现象：连拍若干张之后，**某一次** `Page.captureScreenshot` 不再返回。
+            #       不是每次都挂在第一张 —— 实测能连拍 4~6 张（本次跑到第 3 个元素
+            #       才挂），所以它是"拍到中途卡住"，不是"截图功能整体不可用"。
+            # 证据：挂住之后 socket 超时 30s → 抛错；把超时改到 150s → 仍然不返回
+            #       （整轮跑了 3m51s）。所以卡住的那一次是**永不返回**，加超时治不了。
+            #       其余请求（Runtime.evaluate / dispatchKeyEvent）全程正常。
+            # 已排除的假设（都实测过，都没用，别再重试）：
+            #       ① `fromSurface: False`；
+            #       ② `Page.bringToFront` / `Target.activateTarget`
+            #          （后者在**页面级**会话上会被 CDP 拒掉，而 call() 只看 id
+            #           不看 error → 是个静默空操作）；
+            #       ③ 改用 `/json/list` 复用前台标签页（照 verify_selfcheck_maps.js）；
+            #       ④ "超时太短"（150s 同样不返回）。
+            # 有一条观察值得记下来：补上 `Page.enable` 之前，它挂在第 **1** 张截图；
+            #       补上之后能连拍好几张 —— 即"能撑多久"变了，但最终仍会挂。
+            #       **这不是修复**，只是把故障点往后推，别当成已解决。
+            # 影响：**焦点可见性这一项无法核验到底**（它靠 before/after 像素比对），
+            #       其余 4 项（键盘可达/减少动效/触控目标/对比度）不受影响。
+            # 下一步定位建议：`python tools/_shot_ui.py <目录>`（同一套 CDP 写法）
+            #       连拍多张，看是否同样中途卡住 —— 若是，则与本脚本无关，
+            #       要往"本机 headless 连续截图"或"页面含 Leaflet/ECharts 画布"方向查。
+            # ==========================================================================
+            print("[无法核验] Page.captureScreenshot 连拍中途无响应（不是第一张，也不是偶发抖动）。")
+            print("  焦点可见性检查依赖截图像素比对，本次结果**不完整**。")
+            print("  详见本函数内的「已知问题」注释（已排除 4 个假设）。")
+            sys.exit(1)
         with open(path, "wb") as f:
             f.write(base64.b64decode(r["data"]))
 
@@ -112,10 +148,14 @@ try:
         try:
             opener.open(f"http://127.0.0.1:{PORT}/json/version", timeout=5); break
         except Exception: time.sleep(0.5)
+    # ⚠️ 这里保持原样（`/json/new` 另开标签页）。已试过改成复用浏览器默认目标
+    #    （同 .cache_verify/verify_selfcheck_maps.js 的写法），**仍会挂死**，
+    #    所以没有采用 —— 不留没有证据支撑的改动。详见 shot() 里的「已知问题」。
     rq = urllib.request.Request(f"http://127.0.0.1:{PORT}/json/new?about:blank", method="PUT")
     with opener.open(rq, timeout=15) as r:
         tab = json.load(r)
     c = CDP(tab["webSocketDebuggerUrl"])
+    c.call("Page.enable")
 
     c.call("Page.navigate", {"url": BASE + "/"}); time.sleep(3)
     lg = c.js("fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},"

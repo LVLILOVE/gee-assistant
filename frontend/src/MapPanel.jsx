@@ -110,6 +110,11 @@ export default function MapPanel({ layers, center }) {
   const groupRef = useRef(null)
   const sizeTimerRef = useRef(null)
   const [tileWarn, setTileWarn] = useState(null)
+  // 瓦片**加载失败**（与上面的 tileWarn 不是一回事：tileWarn 是"模板解析不出来"，
+  // 这里是"请求真的失败了"）。见下方 noteTileError 的注释。
+  const [tileErr, setTileErr] = useState(null)
+  const tileErrRef = useRef({ count: 0, names: new Set() })
+  const tileErrTimerRef = useRef(null)
   const [locWarn, setLocWarn] = useState(false)
   const c0 = center ? center[0] : null
   const c1 = center ? center[1] : null
@@ -131,6 +136,26 @@ export default function MapPanel({ layers, center }) {
       Array.isArray(l.bbox) ? l.bbox : null]),
   )
 
+  // 瓦片加载失败的上报入口。
+  //
+  // 【为什么必须有】栅格图层的 `tile_url` 里嵌着 GEE 签发的**短期令牌**，任务当时
+  // 存下的地址过一段时间就失效；后端代理把它映射成 400（实测：无效 mapid →
+  // `{"detail":"瓦片请求被拒绝：GEE 返回 404"}`）。而 Leaflet 拿不到图只会把该瓦片
+  // 留成灰色 —— **原先前端完全没有 tileerror 监听**，用户看到的是一张"没有色块的
+  // 地图"，既无报错也无提示，他唯一能得出的结论是"分析结果错了/没结果"。
+  // 这恰好踩中本项目最忌讳的一条：**静默失败**。
+  //
+  // 去抖的原因：一次地图加载会并发请求几十张瓦片，逐张 setState 会造成渲染风暴。
+  const noteTileError = (name) => {
+    const acc = tileErrRef.current
+    acc.count += 1
+    if (name) acc.names.add(name)
+    clearTimeout(tileErrTimerRef.current)
+    tileErrTimerRef.current = setTimeout(() => {
+      setTileErr({ count: tileErrRef.current.count, names: [...tileErrRef.current.names] })
+    }, 400)
+  }
+
   // 卸载时销毁 Leaflet 实例。**必须有**：L.map 会在 window 上挂 resize 监听
   // （trackResize 默认为 true），而只有 map.remove() 才会解绑它。
   // 不销毁的话，每次切换任务 / 切换图层数量都会**泄漏一张活地图**
@@ -138,6 +163,7 @@ export default function MapPanel({ layers, center }) {
   useEffect(
     () => () => {
       clearTimeout(sizeTimerRef.current)
+      clearTimeout(tileErrTimerRef.current)
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
@@ -164,15 +190,23 @@ export default function MapPanel({ layers, center }) {
     group.clearLayers()
 
     const unusable = []
+    // 重新渲染图层就重置上一轮的失败计数（换了任务/换了图层，旧警告不该继续显示）
+    tileErrRef.current = { count: 0, names: new Set() }
+    clearTimeout(tileErrTimerRef.current)
+    setTileErr(null)
     ;(layers || []).forEach((layer) => {
       // 栅格图层（真实 GEE 返回的是瓦片模板）
       if (layer.tile_url) {
         const proxied = proxiedTileUrl(layer.tile_url)
         if (proxied) {
-          L.tileLayer(proxied, {
+          const tl = L.tileLayer(proxied, {
             opacity: 0.85,
             attribution: 'Google Earth Engine',
-          }).addTo(group)
+          })
+          // 挂 tileerror：图层链接过期 / 上游 4xx 时必须让用户知道，
+          // 而不是留一张"没有色块的地图"让他自己猜。
+          tl.on('tileerror', () => noteTileError(layer.name))
+          tl.addTo(group)
         } else {
           // 解析不出来就别塞裸地址（浏览器直连必然失败），改为显式提示
           unusable.push(layer.name || '栅格图层')
@@ -248,6 +282,14 @@ export default function MapPanel({ layers, center }) {
         <div className="map-warn">
           以下图层的瓦片地址无法识别，已跳过叠加：{tileWarn.join('、')}。
           本机浏览器直连 GEE 瓦片不可用，需由后端代理转发。
+        </div>
+      )}
+      {tileErr && tileErr.count > 0 && (
+        <div className="map-warn">
+          栅格图层有 {tileErr.count} 张瓦片加载失败
+          {tileErr.names.length ? `（${tileErr.names.join('、')}）` : ''}，
+          地图上的色块会缺失。最常见的原因是 GEE 图层链接里的短期令牌已过期
+          （历史任务放久了都会出现），点「重新运行」重跑一次该分析即可刷新图层。
         </div>
       )}
     </div>

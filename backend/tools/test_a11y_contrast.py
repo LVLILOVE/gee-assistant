@@ -17,12 +17,24 @@ import tempfile
 import time
 import urllib.request
 
-EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\153.0.4234.48\msedge.exe"
 PORT = 9225
 BASE = "http://127.0.0.1:8010"
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from browser_util import HINT as BROWSER_HINT, find_edge  # noqa: E402
 from _env import _env  # noqa: E402
+
+# ⚠️ 这里**不能**写死 `...\Edge\Application\<版本号>\msedge.exe`。
+#    2026-09-28 实测踩到：硬编码的 153.0.4234.48 在 Edge 自动更新后变成
+#    `153.0.4234.48.deleting`，`subprocess.Popen` 直接 FileNotFoundError ——
+#    表现为"套件没解析到结果行"，整套无障碍校验**静默失效**。详见 tools/_browser.py。
+EDGE = find_edge()
+if not EDGE:
+    # 环境前置条件不满足 → **明确跳过**，不伪装成失败（更不伪装成通过）。
+    # regress_all.sh 认 `跳过：` 前缀，会记进"已跳过"而不是"未通过"。
+    print("跳过：未找到 Edge/Chrome 浏览器，对比度实测无法进行（需要真实浏览器取计算样式）")
+    print(f"      已找过：{BROWSER_HINT}")
+    raise SystemExit(0)
 
 user = _env("ADMIN_USERNAME", "admin")
 pwd = _env("ADMIN_PASSWORD", "")
