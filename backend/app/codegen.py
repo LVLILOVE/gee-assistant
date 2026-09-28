@@ -226,6 +226,13 @@ def _fallback_code(req: AnalysisRequest) -> str:
     用服务端一次聚合后单次 getInfo 取回（而不是循环里打 12 次网络请求）。
     """
     label = TASK_LABELS.get(req.task_type, req.task_type.value)
+    # ⚠ 用户可控文本（区域名）会被拼进生成代码的**注释**与 **print 字符串**里，
+    #   这两处在拼接前都必须消毒：
+    #     · 注释里出现换行 → 下一行会变成**可执行代码**（代码注入）；
+    #     · 字符串里出现引号 → 生成代码直接 SyntaxError（连 `L'Aquila` 这种
+    #       正常地名都会中招，用户只看到一句毫无指向性的报错）。
+    #   注释里用「压成单行 + 去掉引号」的副本；字符串一律走 repr() 字面量。
+    region_c = " ".join(str(req.region).split()).replace('"', "'").replace("\\", "/")
     # ⚠ 兜底中心**不能**写死某个具体地方（原先是 `or (120.13, 31.20)` = 太湖）。
     # 那会让"恩施大峡谷"这类非内置地名的兜底图默默画在太湖 —— 用户看到的是
     # 一张苏州底图，而分析对象在 1000 km 外，属于静默的错误结果。
@@ -239,36 +246,39 @@ def _fallback_code(req: AnalysisRequest) -> str:
         lon, lat = reg["lon"], reg["lat"]
         half = float(reg.get("half", DEFAULT_HALF))
         coord_line = (
-            f"# 区域中心由内置区域库解析：{req.region}（{reg.get('desc', '')}）\n"
+            f"# 区域中心由内置区域库解析：{region_c}（{reg.get('desc', '')}）\n"
             f"aoi = ee.Geometry.Rectangle(["
             f"{lon - half:.4f}, {lat - half:.4f}, {lon + half:.4f}, {lat + half:.4f}])\n"
         )
         print_line = (
-            f'print("[提示] 区域「{req.region}」使用内置中心坐标 '
+            f'print("[提示] 区域「{region_c}」使用内置中心坐标 '
             f'({lon}, {lat})，范围 {half * 2:.2f}°×{half * 2:.2f}°")\n'
         )
     else:
         # 全国范围（仅供定位，实际的统计意义有限），并在输出里说清楚
         coord_line = (
-            f"# ⚠ 内置区域库中没有「{req.region}」的中心坐标，无法自动定位。\n"
+            f"# ⚠ 内置区域库中没有「{region_c}」的中心坐标，无法自动定位。\n"
             "# 这里退化为全国范围仅用于跑通链路；如需真实分析请改用内置区域名，\n"
             "# 或等待大模型可用时由模型自行给定坐标。\n"
             "aoi = ee.Geometry.Rectangle([73.5, 18.0, 135.0, 53.5])\n"
         )
         print_line = (
-            f'print("[警告] 区域「{req.region}」不在内置区域库中，'
+            f'print("[警告] 区域「{region_c}」不在内置区域库中，'
             '当前使用全国范围兜底，分析结果不具备区域针对性")\n'
         )
     return (
         "import ee\n\n"
-        f'region = globals().get("region") or "{req.region}"\n'
+        # repr() 生成的是**合法且转义到位**的 Python 字面量。原先用 "..."
+        # 手工包引号，等于把用户输入直接当源码拼接 —— 一个引号就能把生成代码
+        # 变成语法错误，一个换行就能插入任意语句。
+        f"region = globals().get('region') or {str(req.region)!r}\n"
         f"{coord_line}"
         f"{print_line}"
         # 兜底日期优先跟随本次请求（req.start_date 自身已由 models.py 按当天
         # 推算默认值），再退化到 daterange 的全局默认。
         # 这段代码会原样交付给用户看/改，写死 '2024-01-01' 等于把过期基准固化进生成物。
-        f"start_date = globals().get('start_date') or '{req.start_date or default_start()}'\n"
-        f"end_date = globals().get('end_date') or '{req.end_date or default_end()}'\n"
+        f"start_date = globals().get('start_date') or {str(req.start_date or default_start())!r}\n"
+        f"end_date = globals().get('end_date') or {str(req.end_date or default_end())!r}\n"
         "cloud = globals().get('cloud_threshold') or 20\n\n"
         'base = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")\n'
         "        .filterBounds(aoi)\n"

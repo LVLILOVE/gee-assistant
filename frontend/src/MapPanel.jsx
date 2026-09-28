@@ -80,10 +80,35 @@ function proxiedTileUrl(tileUrl) {
   return `/api/tile/{z}/{x}/{y}?u=${encodeURIComponent(base)}`
 }
 
+/** 给 geojson 算一个「内容指纹」。
+ *
+ * 为什么不能只记「有没有矢量」（原先用的是 `l.geojson ? 1 : 0`）：
+ * 对同一区域、同一任务类型跑两次（时间范围不同，真实 GEE 返回的矢量内容不同），
+ * name / kind / bbox 完全一致而 geojson 内容不同 → 指纹相同 → effect 不重跑
+ * → 地图上仍是**上一次**的矢量叠加，而卡片标题写的是新任务的名字，
+ * 用户看到"旧图上贴着新标题"。
+ *
+ * 为什么也不整个 JSON.stringify：多要素的 geojson 可能有几十万字符，
+ * 每次渲染都全量序列化会明显掉帧。取「类型 + 要素数 + 首尾坐标片段」
+ * 足以区分不同结果，代价是常数级。
+ */
+function geoFingerprint(gj) {
+  if (!gj) return 0
+  try {
+    const feats = gj.type === 'FeatureCollection' ? gj.features || [] : [gj]
+    const head = JSON.stringify(feats[0]?.geometry?.coordinates ?? null)
+    const tail = JSON.stringify(feats[feats.length - 1]?.geometry?.coordinates ?? null)
+    return `${gj.type}|${feats.length}|${head.length}|${head.slice(0, 32)}|${tail.slice(-32)}`
+  } catch {
+    return 1
+  }
+}
+
 export default function MapPanel({ layers, center }) {
   const ref = useRef(null)
   const mapRef = useRef(null)
   const groupRef = useRef(null)
+  const sizeTimerRef = useRef(null)
   const [tileWarn, setTileWarn] = useState(null)
   const [locWarn, setLocWarn] = useState(false)
   const c0 = center ? center[0] : null
@@ -102,8 +127,24 @@ export default function MapPanel({ layers, center }) {
   //   （即 setLocWarn(true) 是后跑的覆盖了前面的 setLocWarn(false)）。
   //   这正好把这次修复的意义抵消掉 —— 所以指纹是这次修复的必要组成部分。
   const layerKey = JSON.stringify(
-    (layers || []).map((l) => [l.name, l.kind, l.tile_url, l.geojson ? 1 : 0,
+    (layers || []).map((l) => [l.name, l.kind, l.tile_url, geoFingerprint(l.geojson),
       Array.isArray(l.bbox) ? l.bbox : null]),
+  )
+
+  // 卸载时销毁 Leaflet 实例。**必须有**：L.map 会在 window 上挂 resize 监听
+  // （trackResize 默认为 true），而只有 map.remove() 才会解绑它。
+  // 不销毁的话，每次切换任务 / 切换图层数量都会**泄漏一张活地图**
+  // （DOM 容器、瓦片层、事件监听全部留着不放），用户表现为长时间使用后越来越卡。
+  useEffect(
+    () => () => {
+      clearTimeout(sizeTimerRef.current)
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
+      groupRef.current = null
+    },
+    [],
   )
 
   useEffect(() => {
@@ -172,7 +213,13 @@ export default function MapPanel({ layers, center }) {
         setLocWarn(true)
       }
     }
-    setTimeout(() => map.invalidateSize(), 50)
+    // 容器此时可能还没拿到最终尺寸（父级先渲染空态再填内容），延后一次校正。
+    // 定时器要存起来并在卸载时清掉 —— 否则组件已卸载才执行 invalidateSize，
+    // 作用在一张已被 remove() 的地图上。
+    clearTimeout(sizeTimerRef.current)
+    sizeTimerRef.current = setTimeout(() => {
+      if (mapRef.current === map) map.invalidateSize()
+    }, 50)
     // 依赖用 layerKey（内容指纹）而不是 layers 本身 —— 见上方注释。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layerKey, c0, c1])

@@ -44,7 +44,12 @@ export default function ChartPanel({ chart }) {
             radius: '62%',
             data: (chart.labels || []).map((l, i) => ({
               name: l,
-              value: chart.series[0]?.data[i] ?? 0,
+              // ⚠ 必须写成 `(chart.series || [])[0]` —— 不能只对 `[0]` 之后加可选链。
+              // 写成 `chart.series[0]?.data[i]` 时，只要 `chart.series` 本身是
+              // undefined 就会先抛 TypeError，而项目没有 ErrorBoundary，
+              // React 会把整棵结果树卸载掉 → 整个右栏白屏。
+              // bar/line 分支都写了 `chart.series || []` 兜底，这里原先漏了。
+              value: (chart.series || [])[0]?.data?.[i] ?? 0,
             })),
             label: { color: palette.ink900, fontSize: 11 },
             labelLine: { lineStyle: { color: palette.line } },

@@ -319,6 +319,18 @@ export default function App() {
   const [booted, setBooted] = useState(false)
   const [pwdOpen, setPwdOpen] = useState(false)
   const pollRef = useRef(null)
+  // 当前"正在看"的任务 id。轮询回调只有确认自己仍是这个 id 才允许 setTask ——
+  // 否则正在跑的任务 A 的下一次 tick 会把 A 的结果覆盖到用户刚点开的历史任务 B 上
+  // （地图、图表、结论整块换成另一个任务，用户会把 A 的结论当成 B 的）。
+  const activeTaskIdRef = useRef(null)
+  // sendText 的并发闸门。示例标签 / 区域标签 / 回车都不受 Button 的 loading 保护，
+  // 用 ref 而不是 state 才能在同一个事件循环批次里也稳稳挡住。
+  const chatBusyRef = useRef(false)
+  // runOne 内部自己 setTimeout 的轮询定时器（不受 pollRef 管理），卸载/登出时要一起清，
+  // 否则用户登出后后台仍在持续打接口。
+  const runTimersRef = useRef([])
+  // 已经提交到后端的备注文本。"失焦自动补发"靠它判断内容是否真的变了。
+  const savedNoteRef = useRef('')
 
   const refreshHistory = () => {
     listTasks()
@@ -364,7 +376,11 @@ export default function App() {
         setMe({ auth_enabled: true, authenticated: false })
         setBooted(true)
       })
-    return () => clearTimeout(pollRef.current)
+    return () => {
+      clearTimeout(pollRef.current)
+      runTimersRef.current.forEach(clearTimeout)
+      runTimersRef.current = []
+    }
   }, [])
 
   const doLogout = async () => {
@@ -374,8 +390,25 @@ export default function App() {
       /* 即使请求失败也要退回登录页，避免用户卡在无权限的界面 */
     }
     clearTimeout(pollRef.current)
+    runTimersRef.current.forEach(clearTimeout)
+    runTimersRef.current = []
+    activeTaskIdRef.current = null
+    chatBusyRef.current = false
     setTask(null)
     setHistory([])
+    // ⚠ 对话与意图也必须清 —— 原先只重置了 task/history/me，于是换账号登录后
+    // 新用户会看到**上一个用户**的全部提问与助手回答（含分析结论文本），
+    // 底部还挂着按上一位用户的 intent 推出的"参数已就绪"标签，属于跨用户信息残留。
+    setConvo([])
+    setIntent(null)
+    setChatInput('')
+    setChatLoading(false)
+    setLoading(false)
+    setFeedback(null)
+    setFeedbackNote('')
+    savedNoteRef.current = ''
+    setKb([])
+    setKbQuery('')
     setMe({ auth_enabled: true, authenticated: false })
   }
 
@@ -390,19 +423,47 @@ export default function App() {
 
   const startPoll = (id) => {
     clearTimeout(pollRef.current)
-    getTask(id).then((t) => {
-      setTask(t)
-      // 已提交过的反馈回填（刷新/切历史任务后按钮仍显示选中态）
-      setFeedback(t.feedback || null)
-      setFeedbackNote(t.feedback_note || '')
-      if (t.status === 'running' || t.status === 'pending') {
-        pollRef.current = setTimeout(() => startPoll(id), 1200)
-      } else {
-        refreshHistory()
-        if (t.status === 'succeeded') message.success('分析完成')
-        else message.error('分析失败，请查看日志')
-      }
-    })
+    // 认领这次任务：此后只有本任务的结果才允许写入右侧面板。
+    // 这样"连续提交 A、B"或"任务 A 在跑时点开历史任务 B"都不会互相覆盖。
+    activeTaskIdRef.current = id
+    let misses = 0
+
+    const tick = () => {
+      if (activeTaskIdRef.current !== id) return // 已被别的任务接管，安静退场
+      getTask(id)
+        .then((t) => {
+          if (activeTaskIdRef.current !== id) return
+          misses = 0
+          setTask(t)
+          // 已提交过的反馈回填（刷新/切历史任务后按钮仍显示选中态）
+          setFeedback(t.feedback || null)
+          setFeedbackNote(t.feedback_note || '')
+          savedNoteRef.current = (t.feedback_note || '').trim()
+          if (t.status === 'running' || t.status === 'pending') {
+            pollRef.current = setTimeout(tick, 1200)
+          } else {
+            setLoading(false) // 任务到终态才放开"开始分析"按钮
+            refreshHistory()
+            if (t.status === 'succeeded') message.success('分析完成')
+            else message.error('分析失败，请查看日志')
+          }
+        })
+        .catch(() => {
+          // ⚠ 原先这里**没有 catch**。一次瞬时失败（cpolar 隧道抖动、后端重启、
+          // 网关 502）就会让 setTimeout 那一行永远不执行 → 轮询链直接断掉：
+          // 任务卡永久停在"执行中" + 转圈，既不报错也不结束，用户只能刷新页面，
+          // 而后端其实早已跑完（结果就此丢失）。改成有限次重试 + 明确告知。
+          if (activeTaskIdRef.current !== id) return
+          misses += 1
+          if (misses <= 20) {
+            pollRef.current = setTimeout(tick, 1500)
+          } else {
+            setLoading(false)
+            message.warning('任务状态多次刷新失败，请刷新页面或到「历史任务」里查看结果')
+          }
+        })
+    }
+    tick()
   }
 
   const sendFeedback = async (value) => {
@@ -421,6 +482,7 @@ export default function App() {
       }
       await submitFeedback(task.task_id, next, feedbackNote)
       setFeedback(next)
+      savedNoteRef.current = (feedbackNote || '').trim()
       message.success(next === 'up' ? '感谢反馈 👍' : '已记录，我们会继续改进')
     } catch (e) {
       // axios 给的是 "Request failed with status code 4xx"，要显示后端原文才有用
@@ -437,17 +499,22 @@ export default function App() {
   }
 
   const doSubmit = async (fields) => {
+    // 防重复提交。原先 `loading` 只覆盖 POST 这一段（约 1 秒），而一次分析要 30~90s，
+    // 按钮在这段时间里是可点的 —— 再点一次会被后端**接受**（单用户并发上限是 2，
+    // 不是 1），于是两个任务同时烧 DeepSeek 额度与 GEE 算力，结果还会互相覆盖。
+    if (loading) return
     setLoading(true)
     setTask(null)
     try {
       const { task_id } = await submitTask(fields)
       setTask({ task_id, status: 'pending', logs: [], code: '', result: null, region: fields.region })
       startPoll(task_id)
+      // 注意：这里**不**清零 loading —— 交给 startPoll 在任务真正走到终态时清，
+      // 让按钮在整个分析期间保持"分析中"，这也是上面那道防重复提交闸门的前提。
     } catch (e) {
       // 配额超限（429）也走这里，detail 会带上"已有 N 个任务在执行"之类的具体原因
-      message.error('提交失败：' + apiErr(e, '请查看后端日志'))
-    } finally {
       setLoading(false)
+      message.error('提交失败：' + apiErr(e, '请查看后端日志'))
     }
   }
 
@@ -475,16 +542,45 @@ export default function App() {
     new Promise((resolve) => {
       submitTask(fields)
         .then(({ task_id }) => {
+          let misses = 0
+          // 定时器统一登记，登出/卸载时一起清 —— 原先这些 setTimeout 完全不受管理，
+          // 用户登出后后台仍在持续打接口。
+          const later = (fn, ms) => {
+            const t = setTimeout(() => {
+              runTimersRef.current = runTimersRef.current.filter((x) => x !== t)
+              fn()
+            }, ms)
+            runTimersRef.current.push(t)
+          }
           const poll = () => {
             getTask(task_id)
               .then((t) => {
                 if (t.status === 'running' || t.status === 'pending') {
-                  setTimeout(poll, 1200)
+                  later(poll, 1200)
                 } else {
                   resolve(t)
                 }
               })
-              .catch(() => setTimeout(poll, 1200))
+              .catch(() => {
+                // ⚠ 原先这里是无条件每 1.2s 重试、**永不放弃**：后端持续报错
+                // （重启 / 任务被清理成 404 / 隧道中断）时 runOne 永不 resolve，
+                // 多步流程的 await 就永远卡住 → sendText 的 finally 永不执行 →
+                // chatLoading 永远为 true，用户再也发不出任何指令，只能刷新页面。
+                // 改成有限次重试后明确失败，让流程能继续走完。
+                misses += 1
+                if (misses > 20) {
+                  resolve({
+                    task_id,
+                    status: 'failed',
+                    attempts: 0,
+                    code: '',
+                    result: null,
+                    logs: [`任务状态查询连续失败 ${misses} 次，已放弃等待（可到「历史任务」里查看最终结果）`],
+                  })
+                  return
+                }
+                later(poll, 1500)
+              })
           }
           poll()
         })
@@ -549,6 +645,12 @@ export default function App() {
   const sendText = async (raw) => {
     const text = (raw || '').trim()
     if (!text) return
+    // 并发闸门：示例标签、区域标签、输入框回车这三条路都不受发送按钮 loading 的
+    // 保护，在"正在理解…"期间再触发一次会并发跑出**第二条流水线**
+    // （两次 planTask + 多个 submitTask），对话气泡交错，且先返回的那条会在
+    // finally 里提前把转圈关掉，用户以为已经结束了。用 ref 才挡得住同批次连点。
+    if (chatBusyRef.current) return
+    chatBusyRef.current = true
     setChatInput('')
     setConvo((c) => [...c, { role: 'user', text }])
     setChatLoading(true)
@@ -595,6 +697,7 @@ export default function App() {
       setConvo((c) => [...c, { role: 'assistant', text: '出错了：' + (e?.message || e) }])
       message.error('请求失败：' + (e?.message || e))
     } finally {
+      chatBusyRef.current = false
       setChatLoading(false)
     }
   }
@@ -622,15 +725,37 @@ export default function App() {
   }
 
   const loadHistoryItem = (id) => {
+    // 先把正在跑的那条轮询链停掉、并把"当前归属"改成这条。
+    // 否则正在执行的任务 A 的下一次 tick 会把 A 的结果覆盖到用户刚点开的 B 上
+    // （右栏从 B 变成 A，用户会把 A 的结论当成 B 的 —— 历史复看时最容易出错的地方）。
+    clearTimeout(pollRef.current)
+    activeTaskIdRef.current = id
     setTask({ task_id: id, status: 'loading', logs: [], code: '', result: null })
+    setLoading(false)
     // 切换任务时必须清空上一条的反馈，否则会短暂显示出"别人的"选中态
     setFeedback(null)
     setFeedbackNote('')
-    getTask(id).then((t) => {
-      setTask(t)
-      setFeedback(t.feedback || null)
-      setFeedbackNote(t.feedback_note || '')
-    })
+    savedNoteRef.current = ''
+    getTask(id)
+      .then((t) => {
+        if (activeTaskIdRef.current !== id) return
+        setTask(t)
+        setFeedback(t.feedback || null)
+        setFeedbackNote(t.feedback_note || '')
+        savedNoteRef.current = (t.feedback_note || '').trim()
+      })
+      .catch(() => {
+        // ⚠ 原先没有 catch：一旦详情返回非 2xx（任务被清理 / 网关 502），
+        // 右栏会永远停在"加载中"，用户分不清是慢还是坏了，也没有任何提示。
+        if (activeTaskIdRef.current !== id) return
+        setTask({
+          task_id: id,
+          status: 'failed',
+          logs: ['任务详情加载失败，请稍后重试或刷新页面'],
+          code: '',
+          result: null,
+        })
+      })
   }
 
   const labelOf = (v) => types.find((t) => t.value === v)?.label || v
@@ -1165,10 +1290,23 @@ export default function App() {
                   value={feedbackNote}
                   onChange={(e) => setFeedbackNote(e.target.value)}
                   onBlur={() => {
-                    // 已经评过但改了备注 → 自动重新提交（否则用户会以为改动没保存）
-                    if (feedback && feedbackNote.trim()) {
-                      submitFeedback(task.task_id, feedback, feedbackNote).catch(() => {})
-                    }
+                    // 已经评过但改了备注 → 自动重新提交（否则用户会以为改动没保存）。
+                    // 两处修补：
+                    //  ① 只在备注**真的变了**时才发。原先每次失焦都无条件重发一遍
+                    //     同样的 POST —— 纯浏览（点进点出输入框）就会产生多余写请求。
+                    //  ② 失败要给提示。原先 `.catch(() => {})` 静默吞掉，
+                    //     用户以为备注已保存，实际后端并没有这条记录。
+                    const note = feedbackNote.trim()
+                    if (!feedback || !note || note === savedNoteRef.current) return
+                    submitFeedback(task.task_id, feedback, note)
+                      .then(() => {
+                        savedNoteRef.current = note
+                      })
+                      .catch((e) =>
+                        message.error(
+                          '备注保存失败：' + (e?.response?.data?.detail || e?.message || e),
+                        ),
+                      )
                   }}
                   maxLength={200}
                 />

@@ -34,6 +34,9 @@ MIN_PASSWORD_LEN = 8
 # 若将来跑多副本，这里需要换成 Redis 之类的共享存储。
 _MAX_FAILS = 5
 _LOCK_SECONDS = 60
+#: `_fails` 的容量上限。超过就顺手淘汰已过期记录 —— 否则用**随机用户名**刷失败
+#: 就能让这个进程级字典无限增长（内存泄漏，且每次登录都要遍历更大的表）。
+_MAX_FAIL_ENTRIES = 2000
 
 
 class AuthError(Exception):
@@ -155,9 +158,15 @@ class AuthStore:
         return {"id": row["id"], "username": row["username"], "is_admin": bool(row["is_admin"])}
 
     # ---- 登录失败节流 ----
+    #
+    # ⚠ `_fails` 是**进程级可变状态**，而登录接口是公开端点、且跑在 FastAPI 的
+    #   线程池里 —— 三个方法都必须持锁访问。原先一个锁都没加：
+    #   `_note_failure` 的"读-改-写"非原子，并发打同一用户名时计数会互相覆盖，
+    #   同一 60s 窗口里实际放行的尝试次数远大于 `_MAX_FAILS`，把节流直接架空。
 
     def _check_lock(self, key: str) -> None:
-        rec = self._fails.get(key)
+        with self._lock:
+            rec = self._fails.get(key)
         if not rec:
             return
         count, until = rec
@@ -165,11 +174,18 @@ class AuthStore:
             raise AuthError(f"失败次数过多，请 {int(until - time.time()) + 1} 秒后再试", status=429)
 
     def _note_failure(self, key: str) -> None:
-        count, _ = self._fails.get(key, (0, 0.0))
-        self._fails[key] = (count + 1, time.time() + _LOCK_SECONDS)
+        now = time.time()
+        with self._lock:
+            if len(self._fails) > _MAX_FAIL_ENTRIES:
+                for k, (_c, until) in list(self._fails.items()):
+                    if until <= now:
+                        self._fails.pop(k, None)
+            count, _ = self._fails.get(key, (0, 0.0))
+            self._fails[key] = (count + 1, now + _LOCK_SECONDS)
 
     def _clear_failures(self, key: str) -> None:
-        self._fails.pop(key, None)
+        with self._lock:
+            self._fails.pop(key, None)
 
     # ---- 会话 ----
 

@@ -37,7 +37,18 @@ ALLOWED_HOST_SUFFIXES = (".googleapis.com", ".google.com")
 MAX_TILE_BYTES = 4 * 1024 * 1024
 
 #: 取瓦片的超时（要快，瓦片是逐张拉的，不能按任务的 420s 算）
-TILE_TIMEOUT = 30
+TILE_TIMEOUT = 12
+
+#: 瓦片的重试次数。**必须远小于任务级重试**。
+#:
+#: 为什么这是一处真实缺陷：瓦片端点是一次地图加载里**并发几十个**的同步请求，
+#: 而 FastAPI 把所有 `def` 端点跑在同一个 anyio 线程池里（默认 40 线程）。
+#: 原先这里是「适配器内层 5 次重试 × 外层 3 次重试 = 18 次尝试 × TILE_TIMEOUT 30s」，
+#: 单张瓦片的尾部延迟可达约 9 分钟 —— 池子会被这些长尾请求占满，
+#: 于是 `/api/tasks`、`/api/auth/login` 等所有同步接口一起挂住，表现为**服务整体假死**。
+#: 现在把两层都收敛：外层 2 次 + 内层不重试，最坏 2×12s，且不影响成功率
+#: （Leaflet 对失败的瓦片本来就会在平移/缩放时重新请求）。
+TILE_RETRY_ATTEMPTS = 2
 
 #: 底图模板与 UA。OSM 的瓦片使用政策要求带可识别 UA，
 #: 不带会被拒（403），这也是必须由后端统一代理的一个附带好处。
@@ -80,8 +91,13 @@ def build_url(base: str, z: str, x: str, y: str) -> str:
 
 
 def _get(url: str, *, user_agent: str | None = None):
-    """带重试的 GET（代理节点抖动是常态）。4xx 视为永久错误不重试。"""
-    sess = retry_session()
+    """带重试的 GET（代理节点抖动是常态）。4xx 视为永久错误不重试。
+
+    ⚠ 瓦片请求的**总尝试次数必须封顶**，见 `TILE_RETRY_ATTEMPTS` 的注释：
+    这里刻意用 `session(0)` 关掉适配器层的重试，只保留外层一次重试，
+    避免"内层 5 次 × 外层 3 次"叠乘出分钟级的尾部延迟把线程池拖垮。
+    """
+    sess = retry_session(0)
     headers = {"User-Agent": user_agent} if user_agent else None
 
     def _once():
@@ -94,7 +110,7 @@ def _get(url: str, *, user_agent: str | None = None):
             raise TileProxyError("上游返回空内容")
         return resp
 
-    return retry_call(_once, attempts=3, base_delay=0.4)
+    return retry_call(_once, attempts=TILE_RETRY_ATTEMPTS, base_delay=0.3)
 
 
 def fetch(url: str) -> tuple[bytes, str]:

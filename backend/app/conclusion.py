@@ -56,13 +56,22 @@ def _chart_digest(charts: list) -> str:
             continue
         parts = [f"{title}：{name} 共 {len(data)} 项"]
         if len(data) == len(labels) and labels:
-            mx_i = nums.index(max(nums))
-            mn_i = nums.index(min(nums))
-            # 标签下标要以原始 data 为准（nums 过滤过 None，索引会错位）
+            # ⚠ 下标必须回到**原始 data**（labels 与 data 同长同序）。
+            # 过滤掉 None 之后 nums 的下标就不等于 labels 的下标了：
+            # data=[None, 0.3, 0.5] → nums=[0.3, 0.5] → max 的下标是 1 →
+            # 直接拿 1 去索引 labels 会报成「2月」，而真实峰值在 3 月。
+            # 这条错误文本还会继续喂给 LLM，把错误放大进最终结论里 ——
+            # 所以必须保留「值 + 原始下标」的配对，而不是只留过滤后的值。
+            paired = [(float(v), i) for i, v in enumerate(data) if v is not None]
+
             def _label(idx: int) -> str:
                 return str(labels[idx]) if idx < len(labels) else f"第{idx + 1}项"
-            parts.append(f"峰值 {max(nums)}（{_label(mx_i)}）")
-            parts.append(f"最低 {min(nums)}（{_label(mn_i)}）")
+
+            if paired:
+                mx_v, mx_i = max(paired, key=lambda p: p[0])
+                mn_v, mn_i = min(paired, key=lambda p: p[0])
+                parts.append(f"峰值 {mx_v}（{_label(mx_i)}）")
+                parts.append(f"最低 {mn_v}（{_label(mn_i)}）")
         else:
             parts.append(f"峰值 {max(nums)}、最低 {min(nums)}")
         parts.append(f"均值 {round(sum(nums) / len(nums), 2)}")

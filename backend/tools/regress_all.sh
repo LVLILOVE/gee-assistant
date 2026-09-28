@@ -61,6 +61,13 @@ SUITES=(
     #   · 沙箱内 WB.resolve_region() 无参/传参两种用法
     # **改地图/图层/AOI/区域库/意图解析后必跑。**
     test_region_map_fallback.py
+    # 2026-09-28 新增：产品自检发现的 7 类缺陷的守卫
+    # （结论空月下标错位 / 兜底代码未转义的用户输入 / fail_orphans 拿密文当明文 /
+    #   意图区间倒置 / 枚举外 task_type 判成 complete / 瓦片重试叠乘拖垮线程池 /
+    #   图层生成失败被静默吞成"成功"）。
+    # 这 7 条在加入前**回归是一条都抓不到的**（当时 537/537 全绿但问题真实存在）——
+    # 全绿 ≠ 没问题，所以判据必须钉住。
+    test_audit_regressions.py
 )
 # demo_doctor 是纯规则自检（不碰服务/隧道/网络、秒级），所以放在默认清单里；
 # gee_doctor 要装 ee 依赖、稍慢，放在 --with-doctor 后面。

@@ -1108,6 +1108,15 @@ def main() -> None:
         out = buf.getvalue()
         if stats:
             out += "\n[统计] " + json.dumps(stats, ensure_ascii=False)
+        # ⚠ `wb.notes` 原先**只写不读** —— add_image_layer / add_feature_layer
+        #   生成瓦片或转 GeoJSON 失败时只往 notes 里塞一句，然后照常上报一个
+        #   tile_url=null、geojson=null 的空图层。后果是：任务状态 `succeeded`，
+        #   前端却是一张空白地图，**用户拿不到任何失败原因**（notes 不在 report
+        #   的任何 key 里，也不进 stdout）。
+        #   这里显式拼进 stdout（会落到 task.logs 里显示给用户）并结构化回传一份，
+        #   让"图没出来"这件事可见，而不是伪装成成功。
+        if wb.notes:
+            out += "\n[图层警告] " + "；".join(str(n) for n in wb.notes)
         report |= {
             "ok": True,
             "stdout": out[:_MAX_OUTPUT_CHARS],
@@ -1116,6 +1125,7 @@ def main() -> None:
             # stats 同时保留在 stdout 文本里（向后兼容）**并且**结构化回传 ——
             # 结论摘要层需要结构化数据，去解析 stdout 文本太脆弱。
             "stats": stats or {},
+            "notes": [str(n) for n in wb.notes],
         }
     except Exception as e:  # noqa: BLE001
         tb = traceback.format_exc(limit=6)

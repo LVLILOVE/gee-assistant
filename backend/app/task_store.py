@@ -530,14 +530,25 @@ class TaskStore:
                 "SELECT task_id, logs FROM tasks WHERE status IN ('pending','running')"
             ).fetchall()
             for r in rows:
+                # ⚠ 这里直接 SELECT 出来的是**原始列值**，`logs` 是密文（ENC1: 前缀）。
+                #   必须先解密再 json.loads —— 否则必然抛 JSONDecodeError，被下面的
+                #   except 吞成空列表，于是**原有日志被整体抹掉**（生成/执行/调试的
+                #   全部记录都没了，只剩一句"服务重启"，重启后完全无从排查）。
+                #   这正是 `_row_to_dict` 注释里警告过的"先解密再解析"顺序问题。
                 try:
-                    logs = json.loads(r["logs"]) if r["logs"] else []
+                    raw = crypto.decrypt_field(r["logs"]) if r["logs"] else ""
+                    logs = json.loads(raw) if raw else []
+                    if not isinstance(logs, list):
+                        logs = []
                 except Exception:  # noqa: BLE001
                     logs = []
                 logs.append("服务重启：上次执行被中断，已标记为失败，请重新提交")
                 conn.execute(
+                    # 写回时必须重新加密：`logs` 在 ENCRYPTED_TASK_FIELDS 里，
+                    # 直接写明文会破坏"加密列恒为密文"这个不变量
+                    # （读路径靠 ENC1: 前缀判断，明文会被当成未加密值漏过）。
                     "UPDATE tasks SET status='failed', logs=? WHERE task_id=?",
-                    (json.dumps(logs, ensure_ascii=False), r["task_id"]),
+                    (crypto.encrypt_field(json.dumps(logs, ensure_ascii=False)), r["task_id"]),
                 )
         return len(rows)
 

@@ -304,6 +304,14 @@ def _describe(fields: dict) -> str:
 
 def _summarize(merged: dict, source: str) -> dict:
     missing = [k for k in REQUIRED_FIELDS if not merged.get(k)]
+    # 模型可能给出枚举外的 task_type（提示词约束不是强保证）。这种值必须当作
+    # "缺参数"处理，否则会形成一条用户无法自救的死路：
+    #   complete=True → 前端 `doSubmit(res.fields)` 自动提交，
+    #   而 fields.task_type=None 被 Pydantic 直接拒成 422 ——
+    #   界面一边显示"参数已就绪，自动开始分析"，一边弹"出错了"。
+    if merged.get("task_type") is not None and merged.get("task_type") not in TASK_TYPE_ENUM:
+        if "task_type" not in missing:
+            missing = ["task_type", *missing]
     complete = len(missing) == 0
     question = None
     if not complete:
@@ -312,13 +320,23 @@ def _summarize(merged: dict, source: str) -> dict:
         elif "region" in missing:
             question = "请问分析哪个区域？例如：太湖流域、洞庭湖、北京市。"
 
+    # 兜底默认值必须按当天推算。原先写死 "2024-01-01"/"2024-12-31"，导致
+    # 用户只说"现在"（模型正确返回 null）时被静默钉死在 2024 年。
+    start_date = merged.get("start_date") or default_start()
+    end_date = merged.get("end_date") or default_end()
+    # ⚠ 两端是**各自独立**兜底的，模型又经常只给一端，于是很容易产出倒置区间：
+    #   用户说"今年 3 月的植被" → start=2026-03-01，end 落到默认的上一年末。
+    #   倒置区间会被前端原样填进表单并自动提交，GEE 的 filterDate(start > end)
+    #   静默过滤成空集合，白烧 3 轮重试才失败，而错误信息毫无指向性。
+    #   ISO 日期字符串可以直接比大小（YYYY-MM-DD 字典序 == 时间序）。
+    if start_date and end_date and start_date > end_date:
+        start_date, end_date = end_date, start_date
+
     fields = {
         "task_type": merged.get("task_type") if merged.get("task_type") in TASK_TYPE_ENUM else None,
         "region": merged.get("region") or "",
-        # 兜底默认值必须按当天推算。原先写死 "2024-01-01"/"2024-12-31"，导致
-        # 用户只说"现在"（模型正确返回 null）时被静默钉死在 2024 年。
-        "start_date": merged.get("start_date") or default_start(),
-        "end_date": merged.get("end_date") or default_end(),
+        "start_date": start_date,
+        "end_date": end_date,
         "cloud_threshold": _coerce_cloud(merged.get("cloud_threshold")),
     }
     return {
