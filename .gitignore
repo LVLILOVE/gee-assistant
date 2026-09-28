@@ -47,8 +47,11 @@ backend/.auth_tmp*/
 # 改库前的手工备份（含用户密码哈希，绝不进版本库）
 backend/.db_backup/
 
-# vite 重载配置时泄漏的时间戳临时文件（进程被强杀时会残留）
-frontend/vite.config.js.timestamp-*.mjs
+# 配置热重载时泄漏的时间戳临时文件（进程被强杀时会残留）
+# ⚠️ 原规则写死成 `vite.config.js.timestamp-*.mjs` → 2026-09-28 新增 `vitest.config.js`
+#    之后，`vitest.config.js.timestamp-*.mjs` **不被忽略**，直接冒进 `git status`。
+#    教训：忽略规则按「会产生这类文件的**类别**」写通配，别按当时那一个文件名写死。
+frontend/*.config.js.timestamp-*.mjs
 
 # 重新构建前挪开的旧产物目录（带日期后缀的也要覆盖，否则 2MB 构建产物会被误提交）
 frontend/dist_old/

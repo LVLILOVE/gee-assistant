@@ -1,0 +1,9 @@
+# Shell 脚本一律以 LF 入库、以 LF 检出。
+#
+# 为什么需要这条：本仓库在 Windows 上开发，而 `core.autocrlf=true`，
+# 于是**没有任何 .gitattributes 时**，全新克隆出来的 .sh 在工作区会变成 CRLF ——
+# 而 bash 遇 CRLF 会逐行报 `$'\r': command not found` / `exit: numeric argument required`，
+# 即"回归脚本在别人机器上直接跑不起来"。
+# （`backend/tools/regress_all.sh`、`test_frontend.sh` 等是一键回归的入口，
+#   今天在本机恰好是 LF 才一直没暴露这个问题。）
+*.sh text eol=lf

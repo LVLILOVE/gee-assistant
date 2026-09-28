@@ -2,13 +2,13 @@
 # ============================================================================
 # 一键回归 —— 把「改动后必跑」的套件按固定顺序跑完并汇总
 #
-# 为什么需要它：本项目的回归套件有 6 个（逻辑层），散在 tools/ 下。
+# 为什么需要它：本项目的回归套件散在 tools/ 下（逻辑层 + 前端单测 + 若干 opt-in 套件）。
 # 手工逐个跑**一定会漏** —— 2026-09-17 就发生过一次：`test_isolation.py` 静默
 # 失败成 74/79，而当时没人跑它，直到几小时后才发现。漏跑的最坏结果不是"少测了"，
 # 是"以为测过了"。
 #
 # 用法（在 backend 目录下，或任意目录都行）：
-#   bash tools/regress_all.sh                 # 跑 6 个逻辑层套件（默认，约几分钟）
+#   bash tools/regress_all.sh                 # 跑默认套件（逻辑层 + 前端单测，约几分钟）
 #   bash tools/regress_all.sh --only isolation   # 只跑名字含 isolation 的
 #   bash tools/regress_all.sh --with-doctor    # 额外跑 gee_doctor --self-test（沙箱链路）
 #   bash tools/regress_all.sh --with-a11y      # 额外跑无障碍套件（需 :8010 在跑）
@@ -78,9 +78,22 @@ SUITES=(
     # 读代码看不出来，因为本仓库**注释里到处是 `**`**，grep 全是噪音。
     # 所以判据必须是"先剥注释、再找 `**`"（见该套件内的说明）。
     test_jsx_markdown_leak.py
+    # 2026-09-28 新增：**前端单测**（vitest + jsdom）。
+    # 起因：第一巡 12 处前端缺陷**整块零覆盖**，当时只能靠"剥掉注释扫源码"做静态断言
+    # （见 test_audit_regressions.py 的 H 段）—— 而那一类断言看不见"渲染出来了但行为不对"：
+    # 轮询链断掉、旧结果覆盖新结果、文案指了不存在的控件、告警正文漏出 Markdown 星号。
+    # 这个套件把 App / MapPanel / ChartPanel **真渲染**一遍（只替换 api 与 leaflet），
+    # 用例名直接带缺陷编号（F1–F12 / T6 / T7），失败时一眼知道钉的是哪一条。
+    # 为什么进**默认**清单：它自足（只要 frontend/node_modules，不连网/不连服务/不连库），
+    # 与 a11y、http 那类"必须先起服务"的套件不同 —— 没有理由把它藏起来不跑。
+    # 依赖没装时打印「跳过：…」并说明怎么装，**不**允许变成 0/0 的假绿。
+    test_frontend.sh
 )
-# demo_doctor 是纯规则自检（不碰服务/隧道/网络、秒级），所以放在默认清单里；
-# gee_doctor 要装 ee 依赖、稍慢，放在 --with-doctor 后面。
+# ⚠️ 下面这一组**都要显式 `--with-doctor` 才会跑**，不在默认清单里。
+#    原文写成「demo_doctor 放在默认清单里」是**旧的**，与代码不符 —— 别照着注释报套件数。
+#    · demo_doctor：纯规则自检（不碰服务/隧道/网络，秒级），但会 import 存储层。
+#    · gee_doctor：它**不在这份数组里** —— 脚本在下面用独立的一段硬编码调用它。
+#      原因是它 `--self-test` **失败也返回 0**，退出码不可用，必须数 `[ OK ]`/`[FAIL]` 标记。
 DOCTOR_SUITES=(
     demo_doctor.py
 )
