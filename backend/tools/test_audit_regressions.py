@@ -287,6 +287,17 @@ _bro = (_HERE / "browser_util.py").read_text(encoding="utf-8")
 check("浏览器定位器存在且会跳过 .deleting 残留目录",
       "def find_edge" in _bro and "deleting" in _bro)
 
+# 截图重试必须**收在一处**：三个截图脚本原先各写一遍 `call("Page.captureScreenshot")`，
+# 于是"响应被丢弃"这个缺陷在 4 个文件里各有一份（本例就是典型的
+# "补一个点、漏一个面"）。现在统一走 browser_util.capture_png。
+check("capture_png 收在共享模块里（不许各脚本各复制一份）",
+      "def capture_png" in _bro)
+for _name in ("_shot_ui.py", "_shot_focus.py", "_shot_result.py"):
+    _src = (_HERE / _name).read_text(encoding="utf-8")
+    check(f"{_name} 截图走 capture_png（带重试，丢一次响应不再\"跑完没图\"）",
+          "capture_png(" in _src and "Page.captureScreenshot" not in
+          "".join(ln for ln in _src.splitlines() if "capture_png(" not in ln))
+
 # 汇总格式：shell 套件用「N 通过，M 失败」，解析器必须认，否则 `--http` 那三个
 # 套件即使零失败也会被判成 ❌（**假红**），汇总直接变成"3 个套件没全绿"。
 _ra = (_HERE / "regress_all.sh").read_text(encoding="utf-8")
@@ -366,6 +377,49 @@ check("没有脚本依赖被 .gitignore 忽略的本地模块（否则新鲜克�
       not _dep_bad, "；".join(_dep_bad[:3]))
 if _dep_unknown:
     print(f"  ⚠ 有 {_dep_unknown} 处依赖无法判定（本机 git 不可用），未计入断言")
+
+# ============================================================ K 图层失效可自助恢复
+print("\n[K] 地图图层失效必须能自助恢复（提示里让点的动作必须真的存在）")
+
+# ⚠️ 为什么守这个（2026-09-28 实测的真实缺陷）：
+#   MapPanel 的提示文案写着「点「重新运行」重跑一次该分析即可刷新图层」，
+#   但把整个前端搜一遍，"重新运行"**只出现在这两句文案里**，没有任何控件 ——
+#   文案指了一个不存在的东西，这比不提示更糟：用户会去找、找不到，
+#   然后把"这个界面坏了"当成结论。
+#   根因是栅格图层的 tile_url 内嵌 GEE 签发的**短期令牌**，过期后无法续期、
+#   只能重新计算；所以"重跑"不是锦上添花，是这条链路唯一能自愈的动作。
+check("MapPanel 提示的「重新运行」是真按钮（不是只有文案）",
+      "onRerun" in _MAP and "<button" in _MAP)
+check("App 把重跑回调接进 MapPanel", "onRerun={" in _APP)
+check("App 结果区提供「重新运行」入口", "重新运行" in _APP)
+check("重跑用任务自己的参数（而不是固定默认值）",
+      "t.task_type" in _APP and "t.cloud_threshold ?? 20" in _APP)
+check("MapPanel 提示里带图层生成时间（用户才判断得出是不是过期）",
+      "createdAt" in _MAP)
+check("fitBounds 后用 zoomSnap 0.25 填满画布（默认 1 只填 50%~84%）",
+      "zoomSnap" in _MAP)
+
+# 后端详情接口必须回显"重跑要用的全部参数 + 生成时间"。
+# 只做源码文本扫描会漏掉"字段还在但当期语义变了"，所以这里真的调一次。
+try:
+    from app import main as _app_main  # noqa: E402
+
+    _rt = _app_main.store.create(
+        AnalysisRequest(task_type=TaskType.ndvi, region="太湖流域",
+                        start_date="2025-06-01", end_date="2025-08-31",
+                        cloud_threshold=15.0),
+        None,
+    )
+    _detail = _app_main.get_task(_rt, user={"id": 0, "username": "t", "is_admin": True})
+    _need = ("task_type", "region", "start_date", "end_date", "cloud_threshold")
+    check("详情接口回显重跑所需的全部参数",
+          all(_detail.get(k) not in (None, "") for k in _need),
+          str({k: _detail.get(k) for k in _need}))
+    check("详情接口回显 created_at（前端据此说明图层放了多久）",
+          isinstance(_detail.get("created_at"), (int, float)),
+          repr(_detail.get("created_at")))
+except Exception as _exc:  # noqa: BLE001
+    check("详情接口可被调用并回显（临时库）", False, f"{type(_exc).__name__}: {_exc}")
 
 # ============================================================ 汇总
 print()

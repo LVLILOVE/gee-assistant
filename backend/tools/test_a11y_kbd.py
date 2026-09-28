@@ -56,6 +56,8 @@ class CDP:
             buf += self.s.recv(4096)
         self.buf = buf.split(b"\r\n\r\n", 1)[1]
         self._id = 0
+        # 截图响应被浏览器偶发丢弃的次数（已自动重发，仅作观测用，不是失败计数）
+        self.drops = 0
 
     def _send(self, p):
         d = p.encode(); m = os.urandom(4); n = len(d)
@@ -99,39 +101,49 @@ class CDP:
                       {"type": t, "key": name, "code": name,
                        "windowsVirtualKeyCode": 9 if name == "Tab" else 0})
 
-    def shot(self, path):
-        try:
-            r = self.call("Page.captureScreenshot", {"format": "png"}, t=45)
-        except TimeoutError:
-            # ================= 已知问题（2026-09-28 定位，**未解决**）=================
-            # 现象：连拍若干张之后，**某一次** `Page.captureScreenshot` 不再返回。
-            #       不是每次都挂在第一张 —— 实测能连拍 4~6 张（本次跑到第 3 个元素
-            #       才挂），所以它是"拍到中途卡住"，不是"截图功能整体不可用"。
-            # 证据：挂住之后 socket 超时 30s → 抛错；把超时改到 150s → 仍然不返回
-            #       （整轮跑了 3m51s）。所以卡住的那一次是**永不返回**，加超时治不了。
-            #       其余请求（Runtime.evaluate / dispatchKeyEvent）全程正常。
-            # 已排除的假设（都实测过，都没用，别再重试）：
-            #       ① `fromSurface: False`；
-            #       ② `Page.bringToFront` / `Target.activateTarget`
-            #          （后者在**页面级**会话上会被 CDP 拒掉，而 call() 只看 id
-            #           不看 error → 是个静默空操作）；
-            #       ③ 改用 `/json/list` 复用前台标签页（照 verify_selfcheck_maps.js）；
-            #       ④ "超时太短"（150s 同样不返回）。
-            # 有一条观察值得记下来：补上 `Page.enable` 之前，它挂在第 **1** 张截图；
-            #       补上之后能连拍好几张 —— 即"能撑多久"变了，但最终仍会挂。
-            #       **这不是修复**，只是把故障点往后推，别当成已解决。
-            # 影响：**焦点可见性这一项无法核验到底**（它靠 before/after 像素比对），
-            #       其余 4 项（键盘可达/减少动效/触控目标/对比度）不受影响。
-            # 下一步定位建议：`python tools/_shot_ui.py <目录>`（同一套 CDP 写法）
-            #       连拍多张，看是否同样中途卡住 —— 若是，则与本脚本无关，
-            #       要往"本机 headless 连续截图"或"页面含 Leaflet/ECharts 画布"方向查。
-            # ==========================================================================
-            print("[无法核验] Page.captureScreenshot 连拍中途无响应（不是第一张，也不是偶发抖动）。")
-            print("  焦点可见性检查依赖截图像素比对，本次结果**不完整**。")
-            print("  详见本函数内的「已知问题」注释（已排除 4 个假设）。")
-            sys.exit(1)
-        with open(path, "wb") as f:
-            f.write(base64.b64decode(r["data"]))
+    def shot(self, path, clip=None, attempts=4, per=8):
+        """截图到文件；成功返回 True。
+
+        ⚠️ **必须重试，这是本文件的必修课**（原先是"挂一次就 exit(1)"）。
+
+        根因（2026-09-28 用三轮诊断脚本查实，证据都留在这里别删）：
+          · 现象：`Page.captureScreenshot` 偶发**收不到响应**。不是每 N 张必挂，
+            而是随机 —— 同一轮诊断里按时间顺序为 整页 0/30、夹 Tab/blur 1/30、
+            clip 小图 2/20，**丢弃率随会话活动量上升**；与**载荷大小无关**（小图同样会丢）。
+            真实跑整套时第 [2] 段共丢弃 5 次，全部重发即成功。
+          · 关键证据：挂住那一刻，**连接与浏览器都是健康的** ——
+            同一条连接上 `Runtime.evaluate` 正常返回，`recv()` 静默（对端不关连接），
+            而且**把同一条请求原样重发，立刻成功**（观测 3/3）。
+          · 所以"卡住"的定性是：**这一次的响应被丢了/已不可达**，不是渲染器卡死。
+            这直接解释了两个反直觉的现象：
+              ① 把 socket 超时从 30s 加到 150s 也没用（整轮跑了 3m51s）——
+                 丢失的响应等多久都不会来；
+              ② 补上 `Page.enable` 后"能多撑几站"——那只是把随机命中推迟了，
+                 **不是修复**，别再照着那个方向调参数。
+          · 已排除的假设（都实测过，别再重试）：`fromSurface: False` /
+            `Page.bringToFront`+`Target.activateTarget`（后者在页面级会话上会被
+            CDP 拒掉，而 call() 只看 id 不看 error → 静默空操作）/
+            改用 `/json/list` 复用前台标签页 / 加长超时 / 减小载荷。
+          · 结论：唯一有效的手段是**重发**，所以这里做有界重试
+            （默认 4 次 × 8s）。重试用短超时是刻意的：单次等 45s 换不来成功，
+            只会把故障拖长。
+        """
+        params = {"format": "png"}
+        if clip:
+            params["clip"] = clip
+        for _ in range(attempts):
+            try:
+                r = self.call("Page.captureScreenshot", params, t=per)
+            except TimeoutError:
+                self.drops += 1
+                continue
+            data = r.get("data")
+            if not data:
+                continue
+            with open(path, "wb") as f:
+                f.write(base64.b64decode(data))
+            return True
+        return False
 
     def close(self):
         self.s.close()
@@ -148,9 +160,10 @@ try:
         try:
             opener.open(f"http://127.0.0.1:{PORT}/json/version", timeout=5); break
         except Exception: time.sleep(0.5)
-    # ⚠️ 这里保持原样（`/json/new` 另开标签页）。已试过改成复用浏览器默认目标
-    #    （同 .cache_verify/verify_selfcheck_maps.js 的写法），**仍会挂死**，
-    #    所以没有采用 —— 不留没有证据支撑的改动。详见 shot() 里的「已知问题」。
+    # 用 `/json/new` 另开一个干净标签页，避免受浏览器默认页的影响。
+    # ⚠️ 曾以为"另开标签页"是截图挂死的原因，实测**不是** —— 改成复用默认目标
+    #    同样会挂（因为真实原因是响应被偶发丢弃，见 shot() 的注释）；反之
+    #    `/json/new` 也不会额外引入故障。既然两种写法都行，就保留隔离性更好的这个。
     rq = urllib.request.Request(f"http://127.0.0.1:{PORT}/json/new?about:blank", method="PUT")
     with opener.open(rq, timeout=15) as r:
         tab = json.load(r)
@@ -213,6 +226,10 @@ try:
     print("    说明：CSS 用的是 :focus-visible —— 只对**键盘**聚焦生效；")
     print("    JS 的 el.focus() 是程序化聚焦，永远匹配不到它，必须派发真实键盘事件。")
     print("    又：antd 用 box-shadow 画焦点环，读 outline 属性会误判，故改用像素比对。")
+    print("    截图用 `clip` 只截焦点元素周边一小块：载荷小一个数量级，而且")
+    print("    `scale` 直接按 dpr 出图，**不必再手工乘 devicePixelRatio** ——")
+    print("    那个手工乘法正是之前误判的元凶（dpr=1.25 时裁剪框整体错位，")
+    print("    明明有焦点环却裁成旁边空白 → 变化像素 0 → 误报\"无焦点指示\"）。")
     try:
         from PIL import Image, ImageChops
     except ImportError:
@@ -223,6 +240,7 @@ try:
         shutil.rmtree(shot_dir, ignore_errors=True)
         os.makedirs(shot_dir, exist_ok=True)
         seen = []
+        unresolved = []
         # 计数说明（这里踩过坑）：从无焦点状态数起，第 k 次 Tab 到达第 k 个可聚焦元素。
         # 所以第 idx 个元素需要 idx 次 Tab，**不是 idx+1 次**。
         #
@@ -243,42 +261,57 @@ try:
               return JSON.stringify({cls:(a.className||'').toString().split(' ')[0]||a.tagName,
                 txt:(a.innerText||a.placeholder||a.type||'').trim().slice(0,14),
                 box:[r.left,r.top,r.right,r.bottom],
-                dpr: window.devicePixelRatio}); })()""")
+                dpr: window.devicePixelRatio,
+                sx: window.scrollX, sy: window.scrollY}); })()""")
             if not desc:
                 continue
             d = json.loads(desc) if isinstance(desc, str) else desc
             if any(s["txt"] == d["txt"] for s in seen):
                 continue
+            # ⚠ `clip` 的 x/y 是**页面坐标**（含滚动偏移），而 getBoundingClientRect
+            #   给的是视口坐标 —— 必须加上 scrollX/scrollY，否则页面一滚动就裁错位置。
+            #   dpr 交给 clip 的 `scale`，不再手工乘（手工乘那次踩过坑，见函数上方注释）。
+            k = float(d.get("dpr") or 1.0)
+            pad = 12.0
+            bx0 = d["box"][0] + float(d.get("sx") or 0.0)
+            by0 = d["box"][1] + float(d.get("sy") or 0.0)
+            clip = {"x": max(0.0, bx0 - pad), "y": max(0.0, by0 - pad),
+                    "width": max(8.0, d["box"][2] - d["box"][0] + pad * 2),
+                    "height": max(8.0, d["box"][3] - d["box"][1] + pad * 2),
+                    "scale": k}
             after = os.path.join(shot_dir, f"{idx}_after.png")
             before = os.path.join(shot_dir, f"{idx}_before.png")
-            c.shot(after)
-            # 真正取消聚焦后截"无焦点"参照图（同页面状态，唯一差别就是焦点）
+            ok_a = c.shot(after, clip)
+            # 真正取消聚焦后截"无焦点"参照图（同一块区域，唯一差别就是焦点）
             c.js(BLUR); time.sleep(0.35)
-            c.shot(before)
-            ai, bi = Image.open(before).convert("RGB"), Image.open(after).convert("RGB")
+            ok_b = c.shot(before, clip)
+            if not (ok_a and ok_b):
+                # 重试到上限仍拿不到图：**如实记账**，别把它当成"没有焦点指示"。
+                unresolved.append(d["txt"])
+                print(f"      {d['txt']:<16} {d['cls']:<24} **截图重试后仍失败，本位置未核验**")
+                continue
+            ai, bi = Image.open(after).convert("RGB"), Image.open(before).convert("RGB")
             if ai.size != bi.size:
+                unresolved.append(d["txt"])
                 continue
-            # ⚠ 坐标必须乘 devicePixelRatio！getBoundingClientRect 给的是 CSS 像素，
-            #   而截图是物理像素。本机 125% 缩放 → dpr=1.25，1.5 倍的手续费就是
-            #   裁剪框全错位（截图里明明有绿环，裁出来却是旁边一片空白 → 0 差异）。
-            #   这个坑很隐蔽：只看"变化像素=0"会误判成"没有焦点指示"。
-            k = float(d.get("dpr") or 1.0)
-            pad = 10 * k
-            sx = max(0, int(d["box"][0] * k - pad)); sy = max(0, int(d["box"][1] * k - pad))
-            ex = min(ai.size[0], int(d["box"][2] * k + pad))
-            ey = min(ai.size[1], int(d["box"][3] * k + pad))
-            if ex <= sx or ey <= sy:
-                continue
-            ca = ai.crop((sx, sy, ex, ey))
-            cb = bi.crop((sx, sy, ex, ey))
-            diff = ImageChops.difference(ca, cb)
+            diff = ImageChops.difference(ai, bi)
             changed = sum(1 for p in diff.getdata() if sum(p) > 24)
             seen.append({"txt": d["txt"], "cls": d["cls"], "changed": changed})
             print(f"      {d['txt']:<16} {d['cls']:<24} "
                   f"{'有可见焦点指示' if changed > 40 else '**无变化**'}  (变化像素 {changed})")
+        if c.drops:
+            print(f"    [注] 期间有 {c.drops} 次截图响应被浏览器丢弃，已自动重发成功"
+                  f"（headless Edge 的已知偶发行为，不是失败）")
         blind = [v for v in seen if v["changed"] <= 40]
         for v in blind:
             fails.append(f"{v['txt']} 聚焦前后无可见变化（疑似无焦点指示）")
+        if unresolved:
+            fails.append(f"{len(unresolved)} 个焦点位置截图重试后仍失败，未核验完："
+                         f"{'、'.join(unresolved[:3])}")
+        if seen and not any(v["changed"] > 0 for v in seen):
+            # 全部位置"零变化"极可能是**判据本身坏了**（比如 clip 裁错位置），
+            # 而不是"页面上一个焦点指示都没有"。单独点出来，避免静默得出反的结论。
+            fails.append("所有位置的变化像素都是 0 —— 判据本身可能失效（先查 clip 裁剪位置）")
         if not blind and seen:
             print(f"    [OK] {len(seen)} 个键盘焦点位置聚焦前后均有可见变化")
         elif not seen:

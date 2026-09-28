@@ -181,6 +181,26 @@ body,
   line-height: 1.6;
 }
 
+/* 提示条里的动作按钮（目前用于「重新运行」以刷新过期的图层令牌）。
+   刻意用原生 button 而不引组件库：MapPanel 是**延迟加载的独立分包**，
+   文件头写明"独立成文件就是为了让 leaflet 延迟加载"——为一个按钮
+   把组件库拉进这个分包的依赖图不划算。 */
+.map-warn-action {
+  display: block;
+  margin-top: 8px;
+  padding: 3px 12px;
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: #6b4a0d;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.map-warn-action:hover {
+  background: #fdf0cf;
+}
+
 /* 登录 / 注册门：给一个与主题呼应的柔和背景，而不是纯灰平面 */
 .auth-wrap {
   display: flex;

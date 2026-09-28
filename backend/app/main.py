@@ -588,6 +588,14 @@ def get_task(tid: str, user: dict = Depends(require_user)):
         #   ③ 用户无法在详情里核对自己当时填的参数。
         # 值本来就在 t 里（store.get 是全列查询），只是没往外投影。
         "cloud_threshold": t.get("cloud_threshold"),
+        # 2026-09-28 补：栅格图层的 tile_url 里嵌着 GEE 签发的**短期令牌**，
+        #   历史任务放久了图层必然失效（前端只剩灰底图）。前端要能告诉用户
+        #   "这张图是什么时候生成的"，才解释得清"为什么要按原参数重跑一次"；
+        #   没有这个时间戳，用户只能得出"这系统坏了 / 分析错了地方"。
+        # 值与 cloud_threshold 同样本来就在 t 里，只是没往外投影。
+        "created_at": t.get("created_at"),
+        "started_at": t.get("started_at"),
+        "finished_at": t.get("finished_at"),
         # 已提交的反馈回填给前端，刷新页面后按钮仍显示选中态
         "feedback": t.get("feedback"),
         "feedback_note": t.get("feedback_note") or "",

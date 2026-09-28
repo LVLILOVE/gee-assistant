@@ -526,6 +526,30 @@ export default function App() {
     doSubmit(form)
   }
 
+  // 用该任务当时记录的参数**原样**重跑一遍。
+  //
+  // 【为什么必须有】栅格图层的 tile_url 里嵌着 GEE 签发的**短期令牌**，历史任务
+  // 放一段时间后图层必然失效；后端把它映射成 400，Leaflet 只把瓦片留成灰色，
+  // 用户看到的是一张"没有色块的地图"。而令牌只能在**重新计算时**由 GEE 重新签发，
+  // 我们没法凭空续期 —— 所以"按原参数重跑一次"是刷新图层的唯一手段。
+  // 这也是 2026-09-28 补的：此前 MapPanel 的两处提示文案都在引导用户
+  // 「点「重新运行」」，但**界面上根本没有这个控件**，文案指了一个不存在的东西。
+  const reRun = (t) => {
+    if (!t || loading) return
+    if (!t.task_type) {
+      message.warning('这条任务没有记录任务类型（可能是较早版本创建的），无法按原参数重跑，请在左侧重新描述需求')
+      return
+    }
+    const fallback = defaultDateRange()
+    doSubmit({
+      task_type: t.task_type,
+      region: t.region || '太湖流域',
+      start_date: t.start_date || fallback.start_date,
+      end_date: t.end_date || fallback.end_date,
+      cloud_threshold: t.cloud_threshold ?? 20,
+    })
+  }
+
   const TASK_LABELS = {
     ndvi: '植被指数 NDVI',
     water: '水体提取',
@@ -1190,7 +1214,10 @@ export default function App() {
 
         <div className="panel-right">
           {task && !task.is_multi && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+              <Button size="small" onClick={() => reRun(task)} disabled={loading}>
+                重新运行
+              </Button>
               <Button
                 size="small"
                 href={reportUrl(task.task_id)}
@@ -1233,7 +1260,12 @@ export default function App() {
           {result?.layers?.map((layer, i) => (
             <Card key={i} className="result-card" title={layer.name}>
               <Suspense fallback={<PanelLoading />}>
-                <MapPanel layers={[layer]} center={regionCenter(task?.region)} />
+                <MapPanel
+                  layers={[layer]}
+                  center={regionCenter(task?.region)}
+                  createdAt={task?.created_at}
+                  onRerun={() => reRun(task)}
+                />
                 <Legend legend={layer.legend} />
               </Suspense>
             </Card>

@@ -104,7 +104,7 @@ function geoFingerprint(gj) {
   }
 }
 
-export default function MapPanel({ layers, center }) {
+export default function MapPanel({ layers, center, createdAt, onRerun }) {
   const ref = useRef(null)
   const mapRef = useRef(null)
   const groupRef = useRef(null)
@@ -177,7 +177,12 @@ export default function MapPanel({ layers, center }) {
     if (!ref.current) return
     const initial = c0 && c1 ? [c0, c1] : [35, 105]
     if (!mapRef.current) {
-      mapRef.current = L.map(ref.current).setView(initial, c0 && c1 ? 9 : 4)
+      // ⚠ `zoomSnap` 默认是 1，会把 fitBounds 算出的**小数**缩放向下取整。
+      //   定位本身没错（中心点与范围都准），但地图只填满画布的 50%~84%，
+      //   四周留一大圈空白，观感上像"没放大到位"。给到 0.25 后可填到 89%~100%。
+      //   这是纯显示参数，**不参与任何坐标计算** —— 排查"地图位置对不对"时别看这里。
+      mapRef.current = L.map(ref.current, { zoomSnap: 0.25 })
+        .setView(initial, c0 && c1 ? 9 : 4)
       // 底图同样经后端代理（浏览器直连 OSM 也是 HTTP 000）
       L.tileLayer('/api/basemap/{z}/{x}/{y}', {
         attribution: '&copy; OpenStreetMap',
@@ -288,8 +293,23 @@ export default function MapPanel({ layers, center }) {
         <div className="map-warn">
           栅格图层有 {tileErr.count} 张瓦片加载失败
           {tileErr.names.length ? `（${tileErr.names.join('、')}）` : ''}，
-          地图上的色块会缺失。最常见的原因是 GEE 图层链接里的短期令牌已过期
-          （历史任务放久了都会出现），点「重新运行」重跑一次该分析即可刷新图层。
+          地图上的色块会缺失。
+          {createdAt ? `该图层生成于 ${new Date(createdAt * 1000).toLocaleString()}；` : ''}
+          最常见的原因是 GEE 图层链接里的短期令牌已过期（历史任务放久了都会出现）。
+          {/* ⚠️ 这里是**渲染给用户看的正文**，不是注释 —— 原来写的是裸的
+              `**重新计算时**`（Markdown 语法）。JSX 文本节点不解析 Markdown，
+              于是用户屏幕上**原样显示四个星号**。实测：无头浏览器抓到的告警文本是
+              `令牌只能由 GEE 在**重新计算时**签发`。要让用户看见强调就用 <strong>。 */}
+          令牌只能由 GEE 在<strong>重新计算时</strong>签发，没法凭空续期 ——
+          按原参数重跑一次即可刷新图层。
+          {/* ⚠ 这个按钮不是装饰：此前这句文案写的是"点「重新运行」"，
+              而全前端**根本没有这个控件**（文案指了一个不存在的东西，
+              比不提示更糟 —— 用户会去找、找不到，然后认为界面坏了）。 */}
+          {onRerun && (
+            <button type="button" className="map-warn-action" onClick={onRerun}>
+              重新运行（刷新图层）
+            </button>
+          )}
         </div>
       )}
     </div>

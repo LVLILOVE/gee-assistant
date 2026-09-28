@@ -21,7 +21,11 @@ BASE = "http://127.0.0.1:8010"
 #   export ADMIN_PASSWORD。原来只读 os.environ 会拿到空密码 → 登录失败 →
 #   截出来的是登录页，但你以为是"主界面"，而且脚本会一路"成功"退出。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from browser_util import HINT as BROWSER_HINT, find_edge  # noqa: E402
+from browser_util import (  # noqa: E402
+    HINT as BROWSER_HINT,
+    capture_png,
+    find_edge,
+)
 
 # ⚠️ 绝不写死带版本号的浏览器路径：Edge 自动更新后 `Application/<版本>/`
 #    会被改名成 `<版本>.deleting`，脚本直接 FileNotFoundError。
@@ -150,9 +154,12 @@ def shot(cdp_client, path, full=False, width=1440, height=900):
                      "mobile": width < 768})
     cdp_client.call("Page.enable")
     time.sleep(1.2)
-    r = cdp_client.call("Page.captureScreenshot", {"format": "png", "captureBeyondViewport": full})
+    data = capture_png(cdp_client, {"format": "png", "captureBeyondViewport": full})
+    if not data:
+        print(f"[FAIL] {path} 截图重试后仍失败（响应被浏览器丢弃）")
+        return
     with open(path, "wb") as f:
-        f.write(base64.b64decode(r["data"]))
+        f.write(base64.b64decode(data))
     print(f"[OK] {path}  ({os.path.getsize(path)} B)")
 
 

@@ -13,7 +13,11 @@ import time
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from browser_util import HINT as BROWSER_HINT, find_edge  # noqa: E402
+from browser_util import (  # noqa: E402
+    HINT as BROWSER_HINT,
+    capture_png,
+    find_edge,
+)
 
 # ⚠️ 绝不写死带版本号的浏览器路径：Edge 自动更新后 `Application/<版本>/`
 #    会被改名成 `<版本>.deleting`，脚本直接 FileNotFoundError。
@@ -120,10 +124,12 @@ class CDP:
                   {"width": width, "height": height, "deviceScaleFactor": 1,
                    "mobile": width < 768})
         time.sleep(1.5)
-        r = self.call("Page.captureScreenshot",
-                      {"format": "png", "captureBeyondViewport": full})
+        data = capture_png(self, {"format": "png", "captureBeyondViewport": full})
+        if not data:
+            print(f"  [FAIL] {os.path.basename(path)} 截图重试后仍失败（响应被浏览器丢弃）")
+            return
         with open(path, "wb") as f:
-            f.write(base64.b64decode(r["data"]))
+            f.write(base64.b64decode(data))
         print(f"  [OK] {os.path.basename(path)}  {os.path.getsize(path)} B")
 
     def close(self):

@@ -111,6 +111,29 @@ def find_edge():
     return str(versioned[0]) if versioned else None
 
 
+def capture_png(cdp, params=None, attempts=4):
+    """调 `Page.captureScreenshot`，返回 base64 数据；重试到上限仍失败返回 None。
+
+    ⚠️ 为什么"只拍一张"的脚本也需要重试：headless Edge 会**偶发丢弃**某一次
+    `Page.captureScreenshot` 的响应 —— 实测丢弃率随时间/活动量上升（同一轮里
+    0/30 → 1/30 → 2/20），且**与图幅大小无关**（小图同样会丢）；命中的那一刻
+    连接与浏览器都是健康的（其它命令正常），**把同一条请求原样重发即成功**。
+    完整证据链与已排除的假设见 `test_a11y_kbd.py` 里 `CDP.shot()` 的注释。
+
+    单张脚本命中概率看着不高，但一旦命中就是"脚本跑完却没产出图"，
+    很容易被误判成"页面本身有问题"。所以统一收在这里，避免每个脚本各写一遍。
+    """
+    p = {"format": "png"} if params is None else params
+    for _ in range(attempts):
+        try:
+            r = cdp.call("Page.captureScreenshot", p)
+        except (TimeoutError, OSError):
+            continue
+        if r and r.get("data"):
+            return r["data"]
+    return None
+
+
 if __name__ == "__main__":  # 便于人工排查：python tools/browser_util.py
     hit = find_edge()
     print(hit or f"未找到浏览器；找过：{HINT}")

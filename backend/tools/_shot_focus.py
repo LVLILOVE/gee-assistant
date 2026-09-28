@@ -20,7 +20,11 @@ BASE = "http://127.0.0.1:8010"
 out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from browser_util import HINT as BROWSER_HINT, find_edge  # noqa: E402
+from browser_util import (  # noqa: E402
+    HINT as BROWSER_HINT,
+    capture_png,
+    find_edge,
+)
 
 # ⚠️ 绝不写死带版本号的浏览器路径：Edge 自动更新后 `Application/<版本>/`
 #    会被改名成 `<版本>.deleting`，脚本直接 FileNotFoundError。
@@ -103,8 +107,12 @@ class CDP:
         self.call("Emulation.setDeviceMetricsOverride",
                   {"width": w, "height": h, "deviceScaleFactor": 2, "mobile": w < 768})
         time.sleep(1.6)
-        r = self.call("Page.captureScreenshot", {"format": "png"})
-        open(path, "wb").write(base64.b64decode(r["data"]))
+        # 带重试：丢弃一次截图响应就成"跑完没图"，很容易被误判成页面有问题
+        data = capture_png(self)
+        if not data:
+            print(f"  [FAIL] {os.path.basename(path)} 截图重试后仍失败（响应被浏览器丢弃）")
+            return
+        open(path, "wb").write(base64.b64decode(data))
         print(f"  [OK] {os.path.basename(path)}  {os.path.getsize(path)} B")
 
     def close(self):
