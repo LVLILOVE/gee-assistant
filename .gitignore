@@ -53,6 +53,12 @@ backend/.db_backup/
 #    教训：忽略规则按「会产生这类文件的**类别**」写通配，别按当时那一个文件名写死。
 frontend/*.config.js.timestamp-*.mjs
 
+# vitest 的 JSON 报告产物（`npm run test:json` 生成，供脚本或 CI 读结构化结果）。
+# ⚠️ 加这条的原因就是上面那条教训的复现：新增 `test:json` 脚本会产出这个文件，
+#    而它一开始**没有被忽略** → 谁跑一次 `npm run test:json`，`git status` 里就多一个未跟踪文件。
+#    `test_frontend.sh` 虽然会 `rm -f` 自己清掉，但直接跑 npm 脚本或中途被打断就会残留。
+frontend/.test-report*.json
+
 # 重新构建前挪开的旧产物目录（带日期后缀的也要覆盖，否则 2MB 构建产物会被误提交）
 frontend/dist_old/
 frontend/dist_old_*/
